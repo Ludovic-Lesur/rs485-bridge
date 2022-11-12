@@ -11,8 +11,6 @@
 #include "config.h"
 #include "dinfox.h"
 #include "error.h"
-#include "flash_reg.h"
-#include "lpuart.h"
 #include "lptim.h"
 #include "mapping.h"
 #include "math.h"
@@ -22,6 +20,7 @@
 #include "string.h"
 #include "types.h"
 #include "usart.h"
+#include "version.h"
 
 /*** AT local macros ***/
 
@@ -42,6 +41,9 @@
 
 static void _AT_print_ok(void);
 static void _AT_print_command_list(void);
+static void _AT_print_sw_version(void);
+static void _AT_print_error_stack(void);
+static void _AT_adc_callback(void);
 static void _AT_scan_callback(void);
 static void _AT_send_rs485_command_callback(void);
 
@@ -70,6 +72,9 @@ typedef struct {
 static const AT_command_t AT_COMMAND_LIST[] = {
 	{PARSER_MODE_COMMAND, "AT", STRING_NULL, "Ping command", _AT_print_ok},
 	{PARSER_MODE_COMMAND, "AT?", STRING_NULL, "List all available AT commands", _AT_print_command_list},
+	{PARSER_MODE_COMMAND, "AT$V?", STRING_NULL, "Get SW version", _AT_print_sw_version},
+	{PARSER_MODE_COMMAND, "AT$ERROR?", STRING_NULL, "Read error stack", _AT_print_error_stack},
+	{PARSER_MODE_COMMAND, "AT$ADC?", STRING_NULL, "Get ADC measurements", _AT_adc_callback},
 	{PARSER_MODE_COMMAND, "AT$SCAN", STRING_NULL, "Scan all slaves connected to the RS485 bus", _AT_scan_callback},
 	{PARSER_MODE_HEADER, "*", "node_address[hex],command[str]", "Send a command to a specific RS485 node", _AT_send_rs485_command_callback},
 	{PARSER_MODE_HEADER, "*", "command[str]", "Send a command over RS485 bus without any address header", _AT_send_rs485_command_callback},
@@ -173,6 +178,95 @@ static void _AT_print_command_list(void) {
 		_AT_response_add_string(AT_RESPONSE_END);
 		_AT_response_send();
 	}
+	_AT_print_ok();
+}
+
+/* PRINT SW VERSION.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _AT_print_sw_version(void) {
+	_AT_response_add_string("SW");
+	_AT_response_add_value(GIT_MAJOR_VERSION, STRING_FORMAT_DECIMAL, 0);
+	_AT_response_add_string(".");
+	_AT_response_add_value(GIT_MINOR_VERSION, STRING_FORMAT_DECIMAL, 0);
+	_AT_response_add_string(".");
+	_AT_response_add_value(GIT_COMMIT_INDEX, STRING_FORMAT_DECIMAL, 0);
+	if (GIT_DIRTY_FLAG != 0) {
+		_AT_response_add_string(".d");
+	}
+	_AT_response_add_string(" (");
+	_AT_response_add_value(GIT_COMMIT_ID, STRING_FORMAT_HEXADECIMAL, 1);
+	_AT_response_add_string(")");
+	_AT_response_add_string(AT_RESPONSE_END);
+	_AT_response_send();
+	_AT_print_ok();
+}
+
+/* PRINT ERROR STACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _AT_print_error_stack(void) {
+	// Local variables.
+	ERROR_t error_stack[ERROR_STACK_DEPTH] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+	uint32_t idx = 0;
+	// Read stack.
+	ERROR_stack_read(error_stack);
+	// Print stack.
+	_AT_response_add_string("[ ");
+	for (idx=0 ; idx<ERROR_STACK_DEPTH ; idx++) {
+		_AT_response_add_value((int32_t) error_stack[idx], STRING_FORMAT_HEXADECIMAL, 1);
+		_AT_response_add_string(" ");
+	}
+	_AT_response_add_string("]");
+	_AT_response_add_string(AT_RESPONSE_END);
+	_AT_response_send();
+	_AT_print_ok();
+}
+
+/* AT$ADC? EXECUTION CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _AT_adc_callback(void) {
+	// Local variables.
+	ADC_status_t adc1_status = ADC_SUCCESS;
+	uint32_t voltage_mv = 0;
+	int8_t tmcu_degrees = 0;
+	// Trigger internal ADC conversions.
+	_AT_response_add_string("ADC running...");
+	_AT_response_add_string(AT_RESPONSE_END);
+	_AT_response_send();
+	adc1_status = ADC1_perform_measurements();
+	ADC1_error_check_print();
+	// Read and print data.
+	// USB voltage.
+	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VUSB_MV, &voltage_mv);
+	ADC1_error_check_print();
+	_AT_response_add_string("Vusb=");
+	_AT_response_add_value((int32_t) voltage_mv, STRING_FORMAT_DECIMAL, 0);
+	// RS bus voltage.
+	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VRS_MV, &voltage_mv);
+	ADC1_error_check_print();
+	_AT_response_add_string("mV Vrs=");
+	_AT_response_add_value((int32_t) voltage_mv, STRING_FORMAT_DECIMAL, 0);
+	// MCU voltage.
+	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VMCU_MV, &voltage_mv);
+	ADC1_error_check_print();
+	_AT_response_add_string("mV Vmcu=");
+	_AT_response_add_value((int32_t) voltage_mv, STRING_FORMAT_DECIMAL, 0);
+	// MCU temperature.
+	adc1_status = ADC1_get_tmcu(&tmcu_degrees);
+	ADC1_error_check_print();
+	_AT_response_add_string("mV Tmcu=");
+	_AT_response_add_value((int32_t) tmcu_degrees, STRING_FORMAT_DECIMAL, 0);
+	_AT_response_add_string("dC");
+	_AT_response_add_string(AT_RESPONSE_END);
+	_AT_response_send();
+	_AT_print_ok();
+errors:
+	return;
 }
 
 /* AT$SCAN EXECUTION CALLBACK.
