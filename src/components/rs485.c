@@ -173,12 +173,17 @@ RS485_status_t RS485_send_command(LPUART_mode_t lpuart_mode, uint8_t node_addres
 	status = _RS485_wait_for_response(1000);
 	LPUART1_disable_rx();
 	if (status != RS485_SUCCESS) goto errors;
+	// Check if received source address equals the node address.
+	if (rs485_ctx.response_buf[0] != node_address) {
+		status = RS485_ERROR_SOURCE_ADDRESS_MISMATCH;
+		goto errors;
+	}
 	// Fill response.
 	for (idx=0 ; idx<rs485_ctx.response_buf_idx; idx++) {
 		// Break if the maximum size is reached.
 		if (idx > response_size_byte) break;
-		// Fill byte.
-		response[idx] = rs485_ctx.response_buf[idx];
+		// Fill byte and skip source address.
+		response[idx] = rs485_ctx.response_buf[idx + 1];
 	}
 errors:
 	// Disable receiver.

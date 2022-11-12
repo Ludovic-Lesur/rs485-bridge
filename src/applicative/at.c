@@ -284,11 +284,6 @@ static void _AT_scan_callback(void) {
 		_AT_print_status(ERROR_TX_DISABLED);
 		goto errors;
 	}
-	// Check if RS485 is enabled.
-	if (CONFIG_get_rs485_address_mode() == CONFIG_RS485_ADDRESS_DISABLED) {
-		_AT_print_status(ERROR_RS485_ADDRESS_DISABLED);
-		goto errors;
-	}
 	// Perform bus scan.
 	_AT_response_add_string("RS485 bus scan running...");
 	_AT_response_add_string(AT_RESPONSE_END);

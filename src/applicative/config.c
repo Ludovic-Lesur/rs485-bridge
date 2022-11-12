@@ -14,7 +14,6 @@
 /*** CONFIG local macros ***/
 
 #define GPIO_TX_MODE		GPIO_MODE0
-#define GPIO_ADDRESS_MODE	GPIO_MODE1
 
 /*** CONFIG functions ***/
 
@@ -36,20 +35,4 @@ CONFIG_tx_mode_t CONFIG_get_tx_mode(void) {
 	GPIO_configure(&GPIO_TX_MODE, GPIO_MODE_ANALOG, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	// Return mode.
 	return tx_mode;
-}
-
-CONFIG_rs485_address_mode_t CONFIG_get_rs485_address_mode(void) {
-	// Local variables.
-	CONFIG_rs485_address_mode_t address_mode = CONFIG_RS485_ADDRESS_DISABLED;
-	// Activate pull up.
-	GPIO_configure(&GPIO_ADDRESS_MODE, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_UP);
-	LPTIM1_delay_milliseconds(100, 0);
-	// Read GPIO.
-	if (GPIO_read(&GPIO_ADDRESS_MODE) == 0) {
-		address_mode = CONFIG_RS485_ADDRESS_ENABLED;
-	}
-	// Disable pull-up.
-	GPIO_configure(&GPIO_ADDRESS_MODE, GPIO_MODE_ANALOG, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-	// Return mode.
-	return address_mode;
 }

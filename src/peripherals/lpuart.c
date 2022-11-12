@@ -22,14 +22,19 @@
 #define LPUART_STRING_LENGTH_MAX	1000
 #define LPUART_TIMEOUT_COUNT		100000
 
-#define LPUART_ADDR_LENGTH_BYTES	1
 #define LPUART_NODE_ADDRESS			0x00
 
 /*** LPUART local structures ***/
 
+typedef enum {
+	LPUART_FIELD_INDEX_DESTINATION_ADDRESS = 0,
+	LPUART_FIELD_INDEX_SOURCE_ADDRESS,
+	LPUART_FIELD_INDEX_COMMAND,
+} LPUART_field_index_t;
+
 typedef struct {
 	LPUART_mode_t mode;
-	volatile uint32_t irq_count;
+	volatile uint32_t rx_byte_count;
 } LPUART_context_t;
 
 /*** LPUART local global variables ***/
@@ -43,19 +48,24 @@ static LPUART_context_t lpuart_ctx;
  * @return:	None.
  */
 void LPUART1_IRQHandler(void) {
+	// Local variables.
+	uint8_t rx_byte = 0;
 	// RXNE interrupt.
 	if (((LPUART1 -> ISR) & (0b1 << 5)) != 0) {
+		// Read incoming byte.
+		rx_byte = (LPUART1 -> RDR);
+		// Check mode.
 		if (lpuart_ctx.mode == LPUART_MODE_NODE) {
-			// Increment IRQ count.
-			lpuart_ctx.irq_count++;
-			// Do not transmit address bytes to applicative layer.
-			if (lpuart_ctx.irq_count > LPUART_ADDR_LENGTH_BYTES) {
-				// Fill AT RX buffer with incoming byte.
-				RS485_fill_rx_buffer(LPUART1 -> RDR);
+			// Check field index.
+			if (lpuart_ctx.rx_byte_count >= LPUART_FIELD_INDEX_SOURCE_ADDRESS) {
+				// Transmit command to applicative layer.
+				RS485_fill_rx_buffer(rx_byte);
 			}
+			// Increment byte count.
+			lpuart_ctx.rx_byte_count++;
 		}
 		else {
-			RS485_fill_rx_buffer(LPUART1 -> RDR);
+			RS485_fill_rx_buffer(rx_byte);
 		}
 		// Clear RXNE flag.
 		LPUART1 -> RQR |= (0b1 << 3);
@@ -101,7 +111,7 @@ void LPUART1_init(void) {
 	uint32_t brr = 0;
 	// Init context.
 	lpuart_ctx.mode = LPUART_MODE_DIRECT;
-	lpuart_ctx.irq_count = 0;
+	lpuart_ctx.rx_byte_count = 0;
 	// Select LSE as clock source.
 	RCC -> CCIPR |= (0b11 << 10); // LPUART1SEL='11'.
 	// Enable peripheral clock.
@@ -169,7 +179,7 @@ void LPUART1_enable_rx(void) {
 		LPUART1 -> RQR |= (0b1 << 2); // MMRQ='1'.
 	}
 	// Reset IRQ count.
-	lpuart_ctx.irq_count = 0;
+	lpuart_ctx.rx_byte_count = 0;
 	// Clear flag and enable interrupt.
 	LPUART1 -> RQR |= (0b1 << 3);
 	NVIC_enable_interrupt(NVIC_INTERRUPT_LPUART1);
@@ -212,9 +222,11 @@ LPUART_status_t LPUART1_send_command(uint8_t node_address, char_t* command) {
 		status = LPUART_ERROR_NODE_ADDRESS;
 		goto errors;
 	}
-	// Send node address if required.
+	// Send header if required.
 	if (lpuart_ctx.mode == LPUART_MODE_NODE) {
+		// Send destination and source addresses.
 		_LPUART1_fill_tx_buffer(node_address | 0x80);
+		_LPUART1_fill_tx_buffer(LPUART_NODE_ADDRESS);
 	}
 	// Fill TX buffer with new bytes.
 	while (*command) {
