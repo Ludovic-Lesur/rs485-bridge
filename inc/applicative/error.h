@@ -23,6 +23,8 @@
 #include "parser.h"
 #include "string.h"
 #include "types.h"
+// Components.
+#include "rs485.h"
 
 /*** ERROR macros ***/
 
@@ -32,8 +34,8 @@
 
 typedef enum {
 	SUCCESS = 0,
-	ERROR_BUSY,
-	ERROR_SIGFOX_RC,
+	ERROR_TX_DISABLED,
+	ERROR_RS485_ADDRESS_DISABLED,
 	// Peripherals.
 	ERROR_BASE_ADC1 = 0x0100,
 	ERROR_BASE_FLASH = (ERROR_BASE_ADC1 + ADC_ERROR_BASE_LAST),
@@ -48,8 +50,10 @@ typedef enum {
 	ERROR_BASE_MATH = (ERROR_BASE_USART + USART_ERROR_BASE_LAST),
 	ERROR_BASE_PARSER = (ERROR_BASE_MATH + MATH_ERROR_BASE_LAST),
 	ERROR_BASE_STRING = (ERROR_BASE_PARSER + PARSER_ERROR_BASE_LAST),
+	// Components.
+	ERROR_BASE_RS485 = (ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
 	// Last index.
-	ERROR_BASE_LAST
+	ERROR_BASE_LAST = (ERROR_BASE_RS485 + RS485_ERROR_BASE_LAST)
 } ERROR_t;
 
 /*** ERROR functions ***/

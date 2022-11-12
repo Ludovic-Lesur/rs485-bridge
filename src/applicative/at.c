@@ -5,18 +5,20 @@
  *      Author: Ludo
  */
 
-#include <error.h>
 #include "at.h"
 
 #include "adc.h"
+#include "config.h"
+#include "dinfox.h"
+#include "error.h"
 #include "flash_reg.h"
 #include "lpuart.h"
 #include "lptim.h"
-#include "lvrm.h"
 #include "mapping.h"
 #include "math.h"
 #include "nvic.h"
 #include "parser.h"
+#include "rs485.h"
 #include "string.h"
 #include "types.h"
 #include "usart.h"
@@ -31,15 +33,17 @@
 // Parameters separator.
 #define AT_CHAR_SEPARATOR				','
 // Responses.
-#define AT_RESPONSE_END					"\n"
+#define AT_RESPONSE_END					"\r\n"
 #define AT_RESPONSE_TAB					"     "
+// RS485 nodes list size.
+#define AT_RS485_NODES_LIST_LENGTH		16
 
 /*** AT callbacks declaration ***/
 
 static void _AT_print_ok(void);
 static void _AT_print_command_list(void);
-static void _AT_read_callback(void);
-static void _AT_write_callback(void);
+static void _AT_scan_callback(void);
+static void _AT_send_rs485_command_callback(void);
 
 /*** AT local structures ***/
 
@@ -53,7 +57,7 @@ typedef struct {
 
 typedef struct {
 	// AT command buffer.
-	volatile uint8_t command_buf[AT_COMMAND_BUFFER_LENGTH];
+	volatile char_t command_buf[AT_COMMAND_BUFFER_LENGTH];
 	volatile uint32_t command_buf_idx;
 	volatile uint8_t line_end_flag;
 	PARSER_context_t parser;
@@ -64,10 +68,11 @@ typedef struct {
 /*** AT local global variables ***/
 
 static const AT_command_t AT_COMMAND_LIST[] = {
-	{PARSER_MODE_COMMAND, "AT", "\0", "Ping command", _AT_print_ok},
-	{PARSER_MODE_COMMAND, "AT?", "\0", "List all available AT commands", _AT_print_command_list},
-	{PARSER_MODE_HEADER, "AT$R=", "address[dec]", "Read board register", _AT_read_callback},
-	{PARSER_MODE_HEADER, "AT$W=", "address[dec]", "Write board register", _AT_write_callback},
+	{PARSER_MODE_COMMAND, "AT", STRING_NULL, "Ping command", _AT_print_ok},
+	{PARSER_MODE_COMMAND, "AT?", STRING_NULL, "List all available AT commands", _AT_print_command_list},
+	{PARSER_MODE_COMMAND, "AT$SCAN", STRING_NULL, "Scan all slaves connected to the RS485 bus", _AT_scan_callback},
+	{PARSER_MODE_HEADER, "*", "node_address[hex],command[str]", "Send a command to a specific RS485 node", _AT_send_rs485_command_callback},
+	{PARSER_MODE_HEADER, "*", "command[str]", "Send a command over RS485 bus without any address header", _AT_send_rs485_command_callback},
 };
 static AT_context_t at_ctx;
 
@@ -170,34 +175,99 @@ static void _AT_print_command_list(void) {
 	}
 }
 
-/* AT$R EXECUTION CALLBACK.
+/* AT$SCAN EXECUTION CALLBACK.
  * @param:	None.
  * @return:	None.
  */
-static void _AT_read_callback(void) {
+static void _AT_scan_callback(void) {
 	// Local variables.
-	PARSER_status_t parser_status = PARSER_SUCCESS;
-	int32_t register_address = 0;
-	// Read address parameter.
-	parser_status = PARSER_get_parameter(&at_ctx.parser, STRING_FORMAT_DECIMAL, AT_CHAR_SEPARATOR, &register_address);
-	PARSER_error_check();
-	// Get data.
-	switch (register_address) {
-		// TODO
-	default:
+	RS485_status_t rs485_status = RS485_SUCCESS;
+	RS485_node_t node_list[AT_RS485_NODES_LIST_LENGTH];
+	uint8_t number_of_nodes_found = 0;
+	uint8_t idx = 0;
+	// Check if TX is allowed.
+	if (CONFIG_get_tx_mode() == CONFIG_TX_DISABLED) {
+		_AT_print_status(ERROR_TX_DISABLED);
 		goto errors;
-		break;
 	}
+	// Check if RS485 is enabled.
+	if (CONFIG_get_rs485_address_mode() == CONFIG_RS485_ADDRESS_DISABLED) {
+		_AT_print_status(ERROR_RS485_ADDRESS_DISABLED);
+		goto errors;
+	}
+	// Perform bus scan.
+	_AT_response_add_string("RS485 bus scan running...");
+	_AT_response_add_string(AT_RESPONSE_END);
+	_AT_response_send();
+	rs485_status = RS485_scan_nodes(node_list, AT_RS485_NODES_LIST_LENGTH, &number_of_nodes_found);
+	RS485_error_check_print();
+	// Print result.
+	_AT_response_add_value(number_of_nodes_found, STRING_FORMAT_DECIMAL, 0);
+	_AT_response_add_string(" node(s) found");
+	_AT_response_add_string(AT_RESPONSE_END);
+	_AT_response_send();
+	for (idx=0 ; idx<number_of_nodes_found ; idx++) {
+		// Print address.
+		_AT_response_add_value(node_list[idx].address, STRING_FORMAT_HEXADECIMAL, 1);
+		_AT_response_add_string(" : ");
+		// Print board type.
+		if (node_list[idx].board_id >= DINFOX_BOARD_ID_LAST) {
+			_AT_response_add_string("Unknown board ID (");
+			_AT_response_add_value(node_list[idx].board_id, STRING_FORMAT_HEXADECIMAL, 1);
+			_AT_response_add_string(")");
+		}
+		else {
+			_AT_response_add_string((char_t*) DINFOX_BOARD_ID_NAME[node_list[idx].board_id]);
+		}
+		_AT_response_add_string(AT_RESPONSE_END);
+		_AT_response_send();
+	}
+	_AT_print_ok();
 errors:
 	return;
 }
 
-/* AT$W EXECUTION CALLBACK.
+/* RS485 COMMAND EXECUTION CALLBACK.
  * @param:	None.
  * @return:	None.
  */
-static void _AT_write_callback(void) {
-	// TODO
+static void _AT_send_rs485_command_callback(void) {
+	// Local variables.
+	PARSER_status_t parser_status = PARSER_SUCCESS;
+	RS485_status_t rs485_status = RS485_SUCCESS;
+	LPUART_mode_t lpuart_mode = LPUART_MODE_DIRECT;
+	char_t rs485_command[AT_COMMAND_BUFFER_LENGTH];
+	char_t rs485_response[AT_RESPONSE_BUFFER_LENGTH];
+	int32_t node_address = 0;
+	uint8_t idx = 0;
+	// Check if TX is allowed.
+	if (CONFIG_get_tx_mode() == CONFIG_TX_DISABLED) {
+		_AT_print_status(ERROR_TX_DISABLED);
+		goto errors;
+	}
+	// Try parsing node address.
+	parser_status = PARSER_get_parameter(&at_ctx.parser, STRING_FORMAT_HEXADECIMAL, AT_CHAR_SEPARATOR, &node_address);
+	// Check status to determine mode.
+	lpuart_mode = (parser_status == PARSER_SUCCESS) ? LPUART_MODE_NODE : LPUART_MODE_DIRECT;
+	// Reset RS485 buffers.
+	for (idx=0 ; idx<AT_COMMAND_BUFFER_LENGTH ; idx++) rs485_command[idx] = STRING_CHAR_NULL;
+	for (idx=0 ; idx<AT_RESPONSE_BUFFER_LENGTH ; idx++) rs485_response[idx] = STRING_CHAR_NULL;
+	// Copy command.
+	idx = 0;
+	while (at_ctx.command_buf[at_ctx.parser.separator_idx + 1 + idx] != STRING_CHAR_NULL) {
+		rs485_command[idx] = at_ctx.command_buf[at_ctx.parser.separator_idx + 1 + idx];
+		idx++;
+	}
+	rs485_command[idx] = STRING_CHAR_CR;
+	// RS485 address found.
+	rs485_status = RS485_send_command(lpuart_mode, node_address, (char_t*) rs485_command, (char_t*) rs485_response, AT_RESPONSE_BUFFER_LENGTH);
+	RS485_error_check_print();
+	// Print response.
+	_AT_response_add_string(rs485_response);
+	_AT_response_add_string(AT_RESPONSE_END);
+	_AT_response_send();
+errors:
+	return;
 }
 
 /* RESET AT PARSER.
@@ -205,8 +275,14 @@ static void _AT_write_callback(void) {
  * @return:	None.
  */
 static void _AT_reset_parser(void) {
+	// Local variables.
+	uint8_t idx = 0;
+	// Reset buffers
+	for (idx=0 ; idx<AT_COMMAND_BUFFER_LENGTH ; idx++) at_ctx.command_buf[idx] = STRING_CHAR_NULL;
+	for (idx=0 ; idx<AT_RESPONSE_BUFFER_LENGTH ; idx++) at_ctx.response_buf[idx] = STRING_CHAR_NULL;
 	// Reset parsing variables.
 	at_ctx.command_buf_idx = 0;
+	at_ctx.response_buf_idx = 0;
 	at_ctx.line_end_flag = 0;
 	at_ctx.parser.rx_buf = (char_t*) at_ctx.command_buf;
 	at_ctx.parser.rx_buf_length = 0;
@@ -220,7 +296,7 @@ static void _AT_reset_parser(void) {
  */
 static void _AT_decode(void) {
 	// Local variables.
-	uint32_t idx = 0;
+	uint8_t idx = 0;
 	uint8_t decode_success = 0;
 	// Empty or too short command.
 	if (at_ctx.command_buf_idx < AT_COMMAND_LENGTH_MIN) {
@@ -228,7 +304,7 @@ static void _AT_decode(void) {
 		goto errors;
 	}
 	// Update parser length.
-	at_ctx.parser.rx_buf_length = (at_ctx.command_buf_idx - 1); // To ignore line end.
+	at_ctx.parser.rx_buf_length = at_ctx.command_buf_idx;
 	// Loop on available commands.
 	for (idx=0 ; idx<(sizeof(AT_COMMAND_LIST) / sizeof(AT_command_t)) ; idx++) {
 		// Check type.
@@ -255,11 +331,6 @@ errors:
  * @return:	None.
  */
 void AT_init(void) {
-	// Init context.
-	uint32_t idx = 0;
-	for (idx=0 ; idx<AT_COMMAND_BUFFER_LENGTH ; idx++) at_ctx.command_buf[idx] = '\0';
-	for (idx=0 ; idx<AT_RESPONSE_BUFFER_LENGTH ; idx++) at_ctx.response_buf[idx] = '\0';
-	at_ctx.response_buf_idx = 0;
 	// Reset parser.
 	_AT_reset_parser();
 	// Enable LPUART.
@@ -284,18 +355,21 @@ void AT_task(void) {
  * @return:			None.
  */
 void AT_fill_rx_buffer(uint8_t rx_byte) {
-	// Append byte if LF flag is not allready set.
+	// Append byte if line end flag is not allready set.
 	if (at_ctx.line_end_flag == 0) {
-		// Store new byte.
-		at_ctx.command_buf[at_ctx.command_buf_idx] = rx_byte;
-		// Manage index.
-		at_ctx.command_buf_idx++;
-		if (at_ctx.command_buf_idx >= AT_COMMAND_BUFFER_LENGTH) {
-			at_ctx.command_buf_idx = 0;
+		// Check ending characters.
+		if ((rx_byte == STRING_CHAR_CR) || (rx_byte == STRING_CHAR_LF)) {
+			at_ctx.command_buf[at_ctx.command_buf_idx] = STRING_CHAR_NULL;
+			at_ctx.line_end_flag = 1;
 		}
-	}
-	// Set LF flag to trigger decoding.
-	if (rx_byte == STRING_CHAR_CR) {
-		at_ctx.line_end_flag = 1;
+		else {
+			// Store new byte.
+			at_ctx.command_buf[at_ctx.command_buf_idx] = rx_byte;
+			// Manage index.
+			at_ctx.command_buf_idx++;
+			if (at_ctx.command_buf_idx >= AT_COMMAND_BUFFER_LENGTH) {
+				at_ctx.command_buf_idx = 0;
+			}
+		}
 	}
 }

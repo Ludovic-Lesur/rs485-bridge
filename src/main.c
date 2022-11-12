@@ -118,6 +118,8 @@ static void DIM_init_hw(void) {
 	// Communication interfaces.
 	LPUART1_init();
 	USART2_init();
+	// Init AT interface.
+	AT_init();
 }
 
 /*** MAIN function ***/
@@ -130,8 +132,6 @@ int main(void) {
 	// Init board.
 	DIM_init_context();
 	DIM_init_hw();
-	// Init AT interface.
-	AT_init();
 	// Start periodic wakeup timer.
 	RTC_start_wakeup_timer(RTC_WAKEUP_PERIOD_SECONDS);
 	// Main loop.

@@ -98,6 +98,8 @@ void USART2_init(void) {
  * @return:	None.
  */
 void USART2_enable_interrupt(void) {
+	// Clear flag and enable interrupt.
+	USART2 -> RQR |= (0b1 << 3);
 	NVIC_enable_interrupt(NVIC_INTERRUPT_USART2);
 }
 
@@ -106,6 +108,7 @@ void USART2_enable_interrupt(void) {
  * @return:	None.
  */
 void USART2_disable_interrupt(void) {
+	// Disable interrupt.
 	NVIC_disable_interrupt(NVIC_INTERRUPT_USART2);
 }
 
