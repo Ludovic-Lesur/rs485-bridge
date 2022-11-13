@@ -183,7 +183,7 @@ PARSER_status_t PARSER_get_byte_array(PARSER_context_t* parser_ctx, char_t separ
 	}
 	// Check length if required.
 	if (((exact_length != 0) && ((*extracted_length) != max_length)) || ((*extracted_length) > max_length)) {
-		status = PARSER_ERROR_BYTE_ARRAY_LENGTH;
+		status = PARSER_ERROR_BYTE_ARRAY_SIZE;
 		goto errors;
 	}
 errors:

@@ -15,25 +15,20 @@
 #include "rcc.h"
 #include "rcc_reg.h"
 #include "rs485.h"
+#include "rs485_common.h"
 
 /*** LPUART local macros ***/
 
-#define LPUART_BAUD_RATE 			9600
-#define LPUART_STRING_LENGTH_MAX	1000
-#define LPUART_TIMEOUT_COUNT		100000
+#define LPUART_BAUD_RATE 		9600
+#define LPUART_STRING_SIZE_MAX	1000
+#define LPUART_TIMEOUT_COUNT	100000
 
-#define LPUART_NODE_ADDRESS			0x00
+#define LPUART_NODE_ADDRESS		0x00
 
 /*** LPUART local structures ***/
 
-typedef enum {
-	LPUART_FIELD_INDEX_DESTINATION_ADDRESS = 0,
-	LPUART_FIELD_INDEX_SOURCE_ADDRESS,
-	LPUART_FIELD_INDEX_COMMAND,
-} LPUART_field_index_t;
-
 typedef struct {
-	LPUART_mode_t mode;
+	RS485_mode_t mode;
 	volatile uint32_t rx_byte_count;
 } LPUART_context_t;
 
@@ -55,14 +50,14 @@ void LPUART1_IRQHandler(void) {
 		// Read incoming byte.
 		rx_byte = (LPUART1 -> RDR);
 		// Check mode.
-		if (lpuart_ctx.mode == LPUART_MODE_NODE) {
+		if (lpuart_ctx.mode == RS485_MODE_ADDRESSED) {
 			// Check field index.
-			if (lpuart_ctx.rx_byte_count >= LPUART_FIELD_INDEX_SOURCE_ADDRESS) {
-				// Transmit command to applicative layer.
+			if (lpuart_ctx.rx_byte_count >= RS485_FRAME_FIELD_INDEX_SOURCE_ADDRESS) {
+				// Transmit source address and command to applicative layer.
 				RS485_fill_rx_buffer(rx_byte);
 			}
-			// Increment byte count.
-			lpuart_ctx.rx_byte_count++;
+			// Manage byte count.
+			lpuart_ctx.rx_byte_count = (rx_byte == RS485_FRAME_END) ? 0 : (lpuart_ctx.rx_byte_count + 1);
 		}
 		else {
 			RS485_fill_rx_buffer(rx_byte);
@@ -110,7 +105,7 @@ void LPUART1_init(void) {
 	// Local variables.
 	uint32_t brr = 0;
 	// Init context.
-	lpuart_ctx.mode = LPUART_MODE_DIRECT;
+	lpuart_ctx.mode = RS485_MODE_DIRECT;
 	lpuart_ctx.rx_byte_count = 0;
 	// Select LSE as clock source.
 	RCC -> CCIPR |= (0b11 << 10); // LPUART1SEL='11'.
@@ -140,19 +135,19 @@ void LPUART1_init(void) {
  * @param mode:		Operation mode.
  * @return status:	Function execution status.
  */
-LPUART_status_t LPUART1_set_mode(LPUART_mode_t mode) {
+LPUART_status_t LPUART1_set_mode(RS485_mode_t mode) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
 	// Disable peripheral.
 	LPUART1 -> CR1 &= ~(0b1 << 0);
 	// Configure peripheral.
 	switch (mode) {
-	case LPUART_MODE_DIRECT:
+	case RS485_MODE_DIRECT:
 		// Disable mute mode, address detection and wake-up on RXNE.
 		LPUART1 -> CR1 &= 0xFFFFD7FF; // MME='0' and WAKE='0'.
 		LPUART1 -> CR3 |= 0x00030000; // WUS='11'.
 		break;
-	case LPUART_MODE_NODE:
+	case RS485_MODE_ADDRESSED:
 		// Enable mute mode, address detection and wake up on address match.
 		LPUART1 -> CR1 |= 0x00002800; // MME='1' and WAKE='1'.
 		LPUART1 -> CR3 &= 0xFFCFFFFF; // WUS='00'.
@@ -175,7 +170,7 @@ errors:
  */
 void LPUART1_enable_rx(void) {
 	// Request mute mode if needed.
-	if (lpuart_ctx.mode == LPUART_MODE_NODE) {
+	if (lpuart_ctx.mode == RS485_MODE_ADDRESSED) {
 		LPUART1 -> RQR |= (0b1 << 2); // MMRQ='1'.
 	}
 	// Reset IRQ count.
@@ -223,7 +218,7 @@ LPUART_status_t LPUART1_send_command(uint8_t node_address, char_t* command) {
 		goto errors;
 	}
 	// Send header if required.
-	if (lpuart_ctx.mode == LPUART_MODE_NODE) {
+	if (lpuart_ctx.mode == RS485_MODE_ADDRESSED) {
 		// Send destination and source addresses.
 		_LPUART1_fill_tx_buffer(node_address | 0x80);
 		_LPUART1_fill_tx_buffer(LPUART_NODE_ADDRESS);
@@ -234,8 +229,8 @@ LPUART_status_t LPUART1_send_command(uint8_t node_address, char_t* command) {
 		if (status != LPUART_SUCCESS) goto errors;
 		// Check character count.
 		loop_count++;
-		if (loop_count > LPUART_STRING_LENGTH_MAX) {
-			status = LPUART_ERROR_STRING_LENGTH;
+		if (loop_count > LPUART_STRING_SIZE_MAX) {
+			status = LPUART_ERROR_STRING_SIZE;
 			goto errors;
 		}
 	}

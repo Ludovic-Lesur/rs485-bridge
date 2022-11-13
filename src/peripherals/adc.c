@@ -16,8 +16,8 @@
 
 /*** ADC local macros ***/
 
-#define ADC_MEDIAN_FILTER_LENGTH		9
-#define ADC_CENTER_AVERAGE_LENGTH		3
+#define ADC_MEDIAN_FILTER_SIZE			9
+#define ADC_CENTER_AVERAGE_SIZE			3
 
 #define ADC_FULL_SCALE_12BITS			4095
 
@@ -98,7 +98,7 @@ static ADC_status_t _ADC1_filtered_conversion(ADC_channel_t adc_channel, uint32_
 	// Local variables.
 	ADC_status_t status = ADC_SUCCESS;
 	MATH_status_t math_status = MATH_SUCCESS;
-	uint32_t adc_sample_buf[ADC_MEDIAN_FILTER_LENGTH] = {0x00};
+	uint32_t adc_sample_buf[ADC_MEDIAN_FILTER_SIZE] = {0x00};
 	uint8_t idx = 0;
 	// Check parameters.
 	if (adc_channel >= ADC_CHANNEL_LAST) {
@@ -110,12 +110,12 @@ static ADC_status_t _ADC1_filtered_conversion(ADC_channel_t adc_channel, uint32_
 		goto errors;
 	}
 	// Perform all conversions.
-	for (idx=0 ; idx<ADC_MEDIAN_FILTER_LENGTH ; idx++) {
+	for (idx=0 ; idx<ADC_MEDIAN_FILTER_SIZE ; idx++) {
 		status = _ADC1_single_conversion(adc_channel, &(adc_sample_buf[idx]));
 		if (status != ADC_SUCCESS) goto errors;
 	}
 	// Apply median filter.
-	math_status = MATH_median_filter_u32(adc_sample_buf, ADC_MEDIAN_FILTER_LENGTH, ADC_CENTER_AVERAGE_LENGTH, adc_result_12bits);
+	math_status = MATH_median_filter_u32(adc_sample_buf, ADC_MEDIAN_FILTER_SIZE, ADC_CENTER_AVERAGE_SIZE, adc_result_12bits);
 	MATH_status_check(ADC_ERROR_BASE_MATH);
 errors:
 	return status;

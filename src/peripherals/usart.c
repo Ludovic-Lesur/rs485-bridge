@@ -19,9 +19,9 @@
 
 /*** USART local macros ***/
 
-#define USART_BAUD_RATE				9600
-#define USART_TIMEOUT_COUNT			100000
-#define USART_STRING_LENGTH_MAX		1000
+#define USART_BAUD_RATE			9600
+#define USART_TIMEOUT_COUNT		100000
+#define USART_STRING_SIZE_MAX	1000
 
 /*** USART local functions ***/
 
@@ -132,8 +132,8 @@ USART_status_t USART2_send_string(char_t* tx_string) {
 		if (status != USART_SUCCESS) goto errors;
 		// Check character count.
 		char_count++;
-		if (char_count > USART_STRING_LENGTH_MAX) {
-			status = USART_ERROR_STRING_LENGTH;
+		if (char_count > USART_STRING_SIZE_MAX) {
+			status = USART_ERROR_STRING_SIZE;
 			break;
 		}
 	}

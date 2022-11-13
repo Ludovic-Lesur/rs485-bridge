@@ -12,7 +12,7 @@
 
 /*** STRING local macros ***/
 
-#define STRING_DIGIT_BOOLEAN_LENGTH			1
+#define STRING_DIGIT_BOOLEAN_SIZE			1
 #define STRING_DIGIT_DECIMAL_MAX			9
 #define STRING_DIGIT_HEXADECIMAL_MAX		0x0F
 #define STRING_HEXADECICMAL_DIGIT_PER_BYTE	2
@@ -171,7 +171,7 @@ STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, ui
             str[str_idx++] = 'b';
 		}
 
-		for (idx=(MATH_BINARY_MAX_LENGTH - 1) ; idx>=0 ; idx--) {
+		for (idx=(MATH_BINARY_MAX_SIZE - 1) ; idx>=0 ; idx--) {
 			if (abs_value & (0b1 << idx)) {
 				str[str_idx++] = '1';
 				first_non_zero_found = 1;
@@ -190,7 +190,7 @@ STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, ui
 			str[str_idx++] = '0';
 			str[str_idx++] = 'x';
 		}
-		for (idx=(MATH_HEXADECIMAL_MAX_LENGTH - 1) ; idx>=0 ; idx--) {
+		for (idx=(MATH_HEXADECIMAL_MAX_SIZE - 1) ; idx>=0 ; idx--) {
 			generic_byte = (abs_value >> (8 * idx)) & 0xFF;
 			if (generic_byte != 0) {
 				first_non_zero_found = 1;
@@ -211,7 +211,7 @@ STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, ui
 			str[str_idx++] = '0';
 			str[str_idx++] = 'd';
 		}
-		for (idx=(MATH_DECIMAL_MAX_LENGTH - 1) ; idx>=0 ; idx--) {
+		for (idx=(MATH_DECIMAL_MAX_SIZE - 1) ; idx>=0 ; idx--) {
 			math_status = MATH_pow_10(idx, &current_power);
 			MATH_status_check(STRING_ERROR_BASE_MATH);
 			generic_byte = (abs_value - previous_decade) / current_power;
@@ -289,7 +289,7 @@ STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint
 	switch (format) {
 	case STRING_FORMAT_BOOLEAN:
 		// Check if there is only 1 digit (start and end index are equal).
-		if (number_of_digits != STRING_DIGIT_BOOLEAN_LENGTH) {
+		if (number_of_digits != STRING_DIGIT_BOOLEAN_SIZE) {
 			status = STRING_ERROR_BOOLEAN_SIZE;
 			goto errors;
 		}
@@ -313,7 +313,7 @@ STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint
 			goto errors;
 		}
 		// Check if parameter can be binary coded on 32 bits = 4 bytes.
-		if (number_of_digits > (STRING_HEXADECICMAL_DIGIT_PER_BYTE * MATH_HEXADECIMAL_MAX_LENGTH)) {
+		if (number_of_digits > (STRING_HEXADECICMAL_DIGIT_PER_BYTE * MATH_HEXADECIMAL_MAX_SIZE)) {
 			// Error in parameter -> value is too large.
 			status = STRING_ERROR_HEXADECIMAL_OVERFLOW;
 			goto errors;
@@ -329,7 +329,7 @@ STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint
 		break;
 	case STRING_FORMAT_DECIMAL:
 		// Check if parameter can be binary coded on 32 bits.
-		if (number_of_digits > MATH_DECIMAL_MAX_LENGTH) {
+		if (number_of_digits > MATH_DECIMAL_MAX_SIZE) {
 			// Error in parameter -> value is too large.
 			status = STRING_ERROR_DECIMAL_OVERFLOW;
 			goto errors;

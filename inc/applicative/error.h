@@ -34,6 +34,7 @@
 
 typedef enum {
 	SUCCESS = 0,
+	ERROR_BUSY_SPY_RUNNING,
 	ERROR_TX_DISABLED,
 	ERROR_RS485_ADDRESS_DISABLED,
 	// Peripherals.

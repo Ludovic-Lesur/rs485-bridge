@@ -5,24 +5,25 @@
  *      Author: Ludo
  */
 
-#ifndef RS485_H
-#define RS485_H
+#ifndef __RS485_H__
+#define __RS485_H__
 
 #include "lptim.h"
 #include "lpuart.h"
 #include "parser.h"
-
-/*** RS485 macros ***/
-
-#define RS485_ADDRESS_MASK	0x7F
-#define RS485_ADDRESS_LAST	RS485_ADDRESS_MASK
+#include "rs485_common.h"
 
 /*** RS485 structures ***/
 
 typedef enum {
 	RS485_SUCCESS,
 	RS485_ERROR_NULL_PARAMETER,
-	RS485_ERROR_RESPONSE_TIMEOUT,
+	RS485_ERROR_NULL_SIZE,
+	RS485_ERROR_MODE,
+	RS485_ERROR_REPLY_TYPE,
+	RS485_ERROR_REPLY_TIMEOUT,
+	RS485_ERROR_SEQUENCE_TIMEOUT,
+	RS485_ERROR_BUFFER_OVERFLOW,
 	RS485_ERROR_SOURCE_ADDRESS_MISMATCH,
 	RS485_ERROR_BASE_LPUART = 0x0100,
 	RS485_ERROR_BASE_LPTIM = (RS485_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
@@ -30,19 +31,18 @@ typedef enum {
 	RS485_ERROR_BASE_LAST = (RS485_ERROR_BASE_PARSER + PARSER_ERROR_BASE_LAST)
 } RS485_status_t;
 
-typedef struct {
-	uint8_t address;
-	uint8_t board_id;
-} RS485_node_t;
-
 /*** RS485 functions ***/
-
+RS485_status_t RS485_set_mode(RS485_mode_t mode);
 RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size, uint8_t* number_of_nodes_found);
-RS485_status_t RS485_send_command(LPUART_mode_t lpuart_mode, uint8_t node_address, char_t* command, char_t* response, uint8_t response_size_byte);
+RS485_status_t RS485_send_command(uint8_t node_address, char_t* command, char_t* reply, uint8_t reply_size_bytes, char_t reply_separator);
+void RS485_start_spy(void);
+void RS485_stop_spy(void);
+RS485_status_t RS485_spy_task(char_t* rs485_frame, uint8_t rs485_frame_size, uint8_t* rs485_received_frame_size);
+uint8_t RS485_is_frame_available(void);
 void RS485_fill_rx_buffer(uint8_t rx_byte);
 
 #define RS485_status_check(error_base) { if (rs485_status != RS485_SUCCESS) { status = error_base + rs485_status; goto errors; }}
 #define RS485_error_check() { ERROR_status_check(rs485_status, RS485_SUCCESS, ERROR_BASE_RS485); }
 #define RS485_error_check_print() { ERROR_status_check_print(rs485_status, RS485_SUCCESS, ERROR_BASE_RS485); }
 
-#endif /* RS485_H */
+#endif /* __RS485_H__ */
