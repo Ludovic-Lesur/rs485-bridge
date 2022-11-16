@@ -117,7 +117,7 @@ void LPUART1_init(void) {
 	GPIO_configure(&GPIO_LPUART1_DE, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE); // External pull-down resistor present.
 	LPUART1_disable_rx();
 	// Configure peripheral in direct mode by default.
-	LPUART1 -> CR1 |= 0x03FF0022;
+	LPUART1 -> CR1 |= 0x00000022;
 	LPUART1 -> CR2 |= ((LPUART_NODE_ADDRESS & 0x7F) << 24) | (0b1 << 4);
 	LPUART1 -> CR3 |= 0x00B05000;
 	// Baud rate.
