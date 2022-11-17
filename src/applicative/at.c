@@ -27,7 +27,6 @@
 
 // Commands.
 #define AT_COMMAND_BUFFER_SIZE			128
-#define AT_COMMAND_SIZE_MIN				2
 // Parameters separator.
 #define AT_CHAR_SEPARATOR				','
 // Replies.
@@ -161,6 +160,9 @@ static void _AT_print_ok(void) {
  * @return:			None.
  */
 static void _AT_print_error(ERROR_t error) {
+	// Add error to stack.
+	ERROR_stack_add(error);
+	// Print error.
 	_AT_reply_add_string("ERROR_");
 	if (error < 0x0100) {
 		_AT_reply_add_value(0, STRING_FORMAT_HEXADECIMAL, 1);
@@ -510,11 +512,6 @@ static void _AT_decode(void) {
 	// Local variables.
 	uint8_t idx = 0;
 	uint8_t decode_success = 0;
-	// Empty or too short command.
-	if (at_ctx.command_size < AT_COMMAND_SIZE_MIN) {
-		_AT_print_error(ERROR_BASE_PARSER + PARSER_ERROR_UNKNOWN_COMMAND);
-		goto errors;
-	}
 	// Update parser length.
 	at_ctx.parser.buffer_size = at_ctx.command_size;
 	// Loop on available commands.
