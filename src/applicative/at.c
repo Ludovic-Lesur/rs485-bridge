@@ -16,6 +16,7 @@
 #include "math.h"
 #include "nvic.h"
 #include "parser.h"
+#include "pwr.h"
 #include "rs485.h"
 #include "rs485_common.h"
 #include "string.h"
@@ -83,6 +84,7 @@ static const AT_command_t AT_COMMAND_LIST[] = {
 	{PARSER_MODE_COMMAND, "AT?", STRING_NULL, "List all available AT commands", _AT_print_command_list},
 	{PARSER_MODE_COMMAND, "AT$V?", STRING_NULL, "Get SW version", _AT_print_sw_version},
 	{PARSER_MODE_COMMAND, "AT$ERROR?", STRING_NULL, "Read error stack", _AT_print_error_stack},
+	{PARSER_MODE_COMMAND, "AT$RST", STRING_NULL, "Reset MCU", PWR_software_reset},
 	{PARSER_MODE_COMMAND, "AT$ADC?", STRING_NULL, "Get ADC measurements", _AT_adc_callback},
 	{PARSER_MODE_COMMAND, "AT$SCAN", STRING_NULL, "Scan all slaves connected to the RS485 bus", _AT_scan_callback},
 	{PARSER_MODE_HEADER, AT_RS485_COMMAND_HEADER, "node_address[hex],command[str]", "Send a command to a specific RS485 node", _AT_send_rs485_command_callback},

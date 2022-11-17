@@ -23,15 +23,14 @@
 #define RS485_REPLY_TIMEOUT_MS			100
 #define RS485_SEQUENCE_TIMEOUT_MS		1000
 
-static const char_t RS485_REPLY_OK[] = 	"OK";
+#define RS485_REPLY_OK					"OK"
 #define RS485_REPLY_ERROR				"ERROR"
-#define RS485_REPLY_ERROR_FORMAT		STRING_FORMAT_HEXADECIMAL
 
 /*** RS485 local structures ***/
 
 typedef enum {
 	RS485_REPLY_TYPE_RAW = 0,
-	RS485_REPLY_TYPE_STRING,
+	RS485_REPLY_TYPE_OK,
 	RS485_REPLY_TYPE_VALUE,
 	RS485_REPLY_TYPE_LAST
 } RS485_reply_type_t;
@@ -39,7 +38,6 @@ typedef enum {
 typedef struct {
 	RS485_reply_type_t type;
 	uint8_t expected_source_address;
-	char_t* string_ref; // For string type.
 	STRING_format_t format; // For value type.
 	uint32_t timeout_ms;
 } RS485_reply_input_t;
@@ -201,12 +199,12 @@ static RS485_status_t _RS485_wait_reply(RS485_reply_input_t* reply_in_ptr, RS485
 				// Parse reply.
 				switch (reply_in_ptr -> type) {
 				case RS485_REPLY_TYPE_RAW:
-					// Force status to exit.
+					// Do not parse.
 					parser_status = PARSER_SUCCESS;
 					break;
-				case RS485_REPLY_TYPE_STRING:
+				case RS485_REPLY_TYPE_OK:
 					// Compare to reference string.
-					parser_status = PARSER_compare(&rs485_ctx.reply[idx].parser, PARSER_MODE_COMMAND, (reply_in_ptr -> string_ref));
+					parser_status = PARSER_compare(&rs485_ctx.reply[idx].parser, PARSER_MODE_COMMAND, RS485_REPLY_OK);
 					break;
 				case RS485_REPLY_TYPE_VALUE:
 					// Parse value.
@@ -240,12 +238,14 @@ static RS485_status_t _RS485_wait_reply(RS485_reply_input_t* reply_in_ptr, RS485
 		}
 		// Exit if timeout.
 		if (reply_time_ms > (reply_in_ptr -> timeout_ms)) {
+			// Set status to timeout if none reply has been received, otherwise the parser error code is returned.
 			if (reply_count == 0) {
 				status = RS485_ERROR_REPLY_TIMEOUT;
 			}
 			goto errors;
 		}
 		if (sequence_time_ms > RS485_SEQUENCE_TIMEOUT_MS) {
+			// Set status to timeout in any case.
 			status = RS485_ERROR_SEQUENCE_TIMEOUT;
 			goto errors;
 		}
@@ -304,14 +304,13 @@ RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size
 	// Reset result.
 	(*number_of_nodes_found) = 0;
 	// Build reply input common parameters.
-	reply_in.string_ref = (char_t*) RS485_REPLY_OK;
 	reply_in.format = STRING_FORMAT_HEXADECIMAL;
 	reply_in.timeout_ms = RS485_REPLY_TIMEOUT_MS;
 	// Loop on all addresses.
 	for (node_address=0 ; node_address<=RS485_ADDRESS_LAST ; node_address++) {
 		// Reset parser.
 		_RS485_reset_replies();
-		reply_in.type = RS485_REPLY_TYPE_STRING;
+		reply_in.type = RS485_REPLY_TYPE_OK;
 		reply_in.expected_source_address = node_address;
 		// Build command.
 		_RS485_build_command("RS");
@@ -386,7 +385,6 @@ RS485_status_t RS485_send_command(uint8_t node_address, char_t* command, char_t*
 	// Build reply input common parameters.
 	reply_in.type = RS485_REPLY_TYPE_RAW;
 	reply_in.expected_source_address = node_address;
-	reply_in.string_ref = NULL;
 	reply_in.format = STRING_FORMAT_HEXADECIMAL;
 	reply_in.timeout_ms = RS485_REPLY_TIMEOUT_MS;
 	// Reset parser.
