@@ -7,6 +7,7 @@
 
 #include "rs485.h"
 
+#include "at.h"
 #include "dinfox.h"
 #include "iwdg.h"
 #include "lptim.h"
@@ -17,7 +18,7 @@
 /*** RS485 local macros ***/
 
 #define RS485_BUFFER_SIZE_BYTES			128
-#define RS485_REPLY_BUFFER_DEPTH		8
+#define RS485_REPLY_BUFFER_DEPTH		32
 
 #define RS485_REPLY_PARSING_DELAY_MS	10
 #define RS485_REPLY_TIMEOUT_MS			100
@@ -113,12 +114,9 @@ errors:
  * @return:				None.
  */
 static void _RS485_reset_reply(uint8_t reply_index) {
-	// Local variabless.
-	uint8_t char_idx = 0;
-	for (char_idx=0; char_idx<RS485_BUFFER_SIZE_BYTES ; char_idx++) {
-		rs485_ctx.reply[reply_index].buffer[char_idx] = STRING_CHAR_NULL;
-	}
+	// Flush buffer.
 	rs485_ctx.reply[reply_index].size = 0;
+	// Reset flag.
 	rs485_ctx.reply[reply_index].line_end_flag = 0;
 	// Reset parser.
 	rs485_ctx.reply[reply_index].parser.buffer = (char_t*) rs485_ctx.reply[reply_index].buffer;
@@ -356,28 +354,20 @@ errors:
 }
 
 /* SEND A COMMAND ON RS485 BUS.
- * @param node_address:		Slave address.
- * @param command:			Command to send.
- * @param reply_ptr:		Pointer that will point to the slave reply.
- * @param reply_separator:	Character that will be inserted between replies if several replies have been received.
- * @return status:			Function execution status.
+ * @param node_address:	Slave address.
+ * @param command:		Command to send.
+ * @return status:		Function execution status.
  */
-RS485_status_t RS485_send_command(uint8_t node_address, char_t* command, char_t* reply, uint8_t reply_size_bytes, char_t reply_separator) {
+RS485_status_t RS485_send_command(uint8_t node_address, char_t* command) {
 	// Local variables.
 	RS485_status_t status = RS485_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	RS485_reply_input_t reply_in;
 	RS485_reply_output_t reply_out;
 	uint8_t rep_idx = 0;
-	uint8_t char_idx = 0;
-	uint8_t global_idx = 0;
 	// Check parameters.
-	if ((command == NULL) || (reply == NULL)) {
+	if (command == NULL) {
 		status = RS485_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	if (reply_size_bytes == 0) {
-		status = RS485_ERROR_NULL_SIZE;
 		goto errors;
 	}
 	// Build command.
@@ -401,14 +391,8 @@ RS485_status_t RS485_send_command(uint8_t node_address, char_t* command, char_t*
 	for (rep_idx=0 ; rep_idx<RS485_REPLY_BUFFER_DEPTH ; rep_idx++) {
 		// Check reply size.
 		if (rs485_ctx.reply[rep_idx].size > RS485_ADDRESS_SIZE_BYTES) {
-			// Add separator.
-			if (rep_idx > 0) {
-				_RS485_add_char_to_reply(reply_separator);
-			}
-			// Characters loop (starting from 1 to skip source address).
-			for (char_idx=1 ; char_idx<(rs485_ctx.reply[rep_idx].size) ; char_idx++) {
-				_RS485_add_char_to_reply(rs485_ctx.reply[rep_idx].buffer[char_idx]);
-			}
+			// Skip source address.
+			AT_print_rs485_reply((char_t*) &(rs485_ctx.reply[rep_idx].buffer[RS485_FRAME_FIELD_INDEX_SOURCE_ADDRESS]));
 		}
 	}
 errors:
@@ -438,52 +422,19 @@ void RS485_stop_spy(void) {
 }
 
 /* CONTINUOUS LISTENING TASK.
- * @param rs485_frame:					RS485 frame to be filled.
- * @param rs485_frame_size:				Maximum size of the RS485 frame.
- * @param rs485_received_frame_size:	Pointer to 8-bits value that will contain the size of the received RS485 frame (0 is no frame is available).
- * @return status:						Function execution status.
+ * @param:	None.
+ * @return:	None.
  */
-RS485_status_t RS485_spy_task(char_t* rs485_frame, uint8_t rs485_frame_size, uint8_t* rs485_received_frame_size) {
-	// Local variables.
-	RS485_status_t status = RS485_SUCCESS;
-	uint8_t char_idx = 0;
-	uint8_t overflow_flag = 0;
-	// Check parameters.
-	if ((rs485_frame == NULL) || (rs485_received_frame_size == NULL)) {
-		status = RS485_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	if (rs485_frame_size == 0) {
-		status = RS485_ERROR_NULL_SIZE;
-		goto errors;
-	}
-	// Reset flag.
-	(*rs485_received_frame_size) = 0;
+void RS485_spy_task(void) {
 	// Check line end flag on current reply.
 	if (rs485_ctx.reply[rs485_ctx.reply_read_idx].line_end_flag != 0) {
-		// Update size.
-		(*rs485_received_frame_size) = (rs485_ctx.reply[rs485_ctx.reply_read_idx].size);
-		// Copy raw frame.
-		for (char_idx=0 ; char_idx<(rs485_ctx.reply[rs485_ctx.reply_read_idx].size) ; char_idx++) {
-			// Check index.
-			if (char_idx >= rs485_frame_size) {
-				overflow_flag = 1;
-				break;
-			}
-			rs485_frame[char_idx] = rs485_ctx.reply[rs485_ctx.reply_read_idx].buffer[char_idx];
-		}
+		// Print frame.
+		AT_print_rs485_frame((char_t*) rs485_ctx.reply[rs485_ctx.reply_read_idx].buffer, rs485_ctx.reply[rs485_ctx.reply_read_idx].size);
 		// Reset reply.
 		_RS485_reset_reply(rs485_ctx.reply_read_idx);
 		// Increment read index.
 		rs485_ctx.reply_read_idx = (rs485_ctx.reply_read_idx + 1) % RS485_REPLY_BUFFER_DEPTH;
-		// Exit if overflow was detected.
-		if (overflow_flag != 0) {
-			status = RS485_ERROR_BUFFER_OVERFLOW;
-			goto errors;
-		}
 	}
-errors:
-	return status;
 }
 
 /* CHECK IF AN RS485 FRAME IS AVAILABLE.

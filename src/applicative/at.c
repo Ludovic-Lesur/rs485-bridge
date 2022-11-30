@@ -38,7 +38,6 @@
 // RS485 variables.
 #define AT_RS485_COMMAND_HEADER			"*"
 #define AT_RS485_NODES_LIST_SIZE		16
-#define AT_RS485_REPLY_SEPARATOR		AT_CHAR_SEPARATOR
 
 /*** AT callbacks declaration ***/
 
@@ -73,8 +72,6 @@ typedef struct {
 	// RS485.
 	uint8_t spy_running;
 	uint8_t address_parsing_enable;
-	char_t rs485_reply[AT_REPLY_BUFFER_SIZE];
-	uint8_t rs485_reply_size;
 } AT_context_t;
 
 /*** AT local global variables ***/
@@ -91,9 +88,19 @@ static const AT_command_t AT_COMMAND_LIST[] = {
 	{PARSER_MODE_HEADER, AT_RS485_COMMAND_HEADER, "command[str]", "Send a command over RS485 bus without any address header", _AT_send_rs485_command_callback},
 	{PARSER_MODE_HEADER, "AT$SPY=", "enable[bit],address_parsing_enable[bit]", "Start or stop continuous RS485 bus listening", _AT_spy_callback},
 };
+
 static AT_context_t at_ctx;
 
 /*** AT local functions ***/
+
+/* GENERIC MACRO TO ADD A CHARACTER TO THE REPLY BUFFER.
+ * @param character:	Character to add.
+ * @return:				None.
+ */
+#define _AT_reply_add_char(character) { \
+	at_ctx.reply[at_ctx.reply_size] = character; \
+	at_ctx.reply_size = (at_ctx.reply_size + 1) % AT_REPLY_BUFFER_SIZE; \
+}
 
 /* APPEND A STRING TO THE REPONSE BUFFER.
  * @param tx_string:	String to add.
@@ -102,11 +109,7 @@ static AT_context_t at_ctx;
 static void _AT_reply_add_string(char_t* tx_string) {
 	// Fill TX buffer with new bytes.
 	while (*tx_string) {
-		at_ctx.reply[at_ctx.reply_size++] = *(tx_string++);
-		// Manage rollover.
-		if (at_ctx.reply_size >= AT_REPLY_BUFFER_SIZE) {
-			at_ctx.reply_size = 0;
-		}
+		_AT_reply_add_char(*(tx_string++));
 	}
 }
 
@@ -137,14 +140,13 @@ static void _AT_reply_add_value(int32_t tx_value, STRING_format_t format, uint8_
 static void _AT_reply_send(void) {
 	// Local variables.
 	USART_status_t usart_status = USART_SUCCESS;
-	uint32_t idx = 0;
 	// Add ending string.
 	_AT_reply_add_string(AT_REPLY_END);
+	_AT_reply_add_char(STRING_CHAR_NULL);
 	// Send response over UART.
 	usart_status = USART2_send_string(at_ctx.reply);
 	USART_error_check();
-	// Flush response buffer.
-	for (idx=0 ; idx<AT_REPLY_BUFFER_SIZE ; idx++) at_ctx.reply[idx] = STRING_CHAR_NULL;
+	// Flush reply buffer.
 	at_ctx.reply_size = 0;
 }
 
@@ -351,18 +353,6 @@ errors:
 	return;
 }
 
-/* RESET RS485 REPLY BUFFER.
- * @param:	None.
- * @return:	None.
- */
-static void _AT_reset_rs485_reply() {
-	// Local variables.
-	uint8_t idx = 0;
-	// Reset buffer and length.
-	for (idx=0 ; idx<AT_REPLY_BUFFER_SIZE ; idx++) at_ctx.rs485_reply[idx] = STRING_CHAR_NULL;
-	at_ctx.rs485_reply_size = 0;
-}
-
 /* RS485 COMMAND EXECUTION CALLBACK.
  * @param:	None.
  * @return:	None.
@@ -397,17 +387,11 @@ static void _AT_send_rs485_command_callback(void) {
 		_AT_reply_add_string("Direct mode");
 	}
 	_AT_reply_send();
-	// Reset RS485 buffer.
-	_AT_reset_rs485_reply();
 	// RS485 address found.
 	rs485_status = RS485_set_mode(rs485_mode);
 	RS485_error_check_print();
-	rs485_status = RS485_send_command(node_address, (char_t*) &(at_ctx.command[at_ctx.parser.separator_idx + 1]), (char_t*) at_ctx.rs485_reply, AT_REPLY_BUFFER_SIZE, AT_RS485_REPLY_SEPARATOR);
+	rs485_status = RS485_send_command(node_address, (char_t*) &(at_ctx.command[at_ctx.parser.separator_idx + 1]));
 	RS485_error_check_print();
-	// Print response.
-	_AT_reply_add_string(AT_RS485_COMMAND_HEADER);
-	_AT_reply_add_string(at_ctx.rs485_reply);
-	_AT_reply_send();
 errors:
 	return;
 }
@@ -438,8 +422,6 @@ static void _AT_spy_callback(void) {
 	}
 	else {
 		_AT_reply_add_string("Starting continuous listening...");
-		// Reset RS485 frame buffer.
-		_AT_reset_rs485_reply();
 		// Start continuous listening.
 		rs485_status = RS485_set_mode(RS485_MODE_DIRECT);
 		RS485_error_check_print();
@@ -456,50 +438,17 @@ errors:
 	return;
 }
 
-/* DECODE AND PRINT AN RS485 FRAME.
- * @param:	None.
- * @return:	None.
- */
-static void _AT_print_rs485_frame(void) {
-	// Local variables.
-	uint8_t source_address = 0;
-	uint8_t destination_address = 0;
-	// Check parsing mode.
-	if (at_ctx.address_parsing_enable == 0) {
-		_AT_reply_add_string((char_t*) at_ctx.rs485_reply);
-	}
-	else {
-		// Check length.
-		if (at_ctx.rs485_reply_size >= RS485_FRAME_FIELD_INDEX_DATA) {
-			// Print source address.
-			source_address = ((uint8_t) (at_ctx.rs485_reply[RS485_FRAME_FIELD_INDEX_SOURCE_ADDRESS])) & RS485_ADDRESS_MASK;
-			_AT_reply_add_value((int32_t) source_address, STRING_FORMAT_HEXADECIMAL, 1);
-			_AT_reply_add_string(" > ");
-			// Print destination address.
-			destination_address = ((uint8_t) (at_ctx.rs485_reply[RS485_FRAME_FIELD_INDEX_DESTINATION_ADDRESS])) & RS485_ADDRESS_MASK;
-			_AT_reply_add_value((int32_t) destination_address, STRING_FORMAT_HEXADECIMAL, 1);
-			_AT_reply_add_string(" : ");
-			// Print command.
-			_AT_reply_add_string((char_t*) &(at_ctx.rs485_reply[RS485_FRAME_FIELD_INDEX_DATA]));
-		}
-	}
-	_AT_reply_send();
-}
-
 /* RESET AT PARSER.
  * @param:	None.
  * @return:	None.
  */
 static void _AT_reset_parser(void) {
-	// Local variables.
-	uint8_t idx = 0;
-	// Reset buffers.
-	for (idx=0 ; idx<AT_COMMAND_BUFFER_SIZE ; idx++) at_ctx.command[idx] = STRING_CHAR_NULL;
-	for (idx=0 ; idx<AT_REPLY_BUFFER_SIZE ; idx++) at_ctx.reply[idx] = STRING_CHAR_NULL;
-	// Reset parsing variables.
+	// Flush buffers.
 	at_ctx.command_size = 0;
 	at_ctx.reply_size = 0;
+	// Reset flag.
 	at_ctx.line_end_flag = 0;
+	// Reset parser.
 	at_ctx.parser.buffer = (char_t*) at_ctx.command;
 	at_ctx.parser.buffer_size = 0;
 	at_ctx.parser.separator_idx = 0;
@@ -555,8 +504,6 @@ void AT_init(void) {
  * @return:	None.
  */
 void AT_task(void) {
-	// Local variables.
-	RS485_status_t rs485_status = RS485_SUCCESS;
 	// Trigger decoding function if line end found.
 	if (at_ctx.line_end_flag != 0) {
 		// Decode and execute command.
@@ -569,15 +516,51 @@ void AT_task(void) {
 		// Polling task.
 		while (RS485_is_frame_available() != 0) {
 			// Get frame.
-			rs485_status = RS485_spy_task((char_t*) at_ctx.rs485_reply, AT_REPLY_BUFFER_SIZE, &at_ctx.rs485_reply_size);
-			// Check result.
-			if ((rs485_status == RS485_SUCCESS) && (at_ctx.rs485_reply_size > 0)) {
-				_AT_print_rs485_frame();
-				_AT_reset_rs485_reply();
-			}
+			RS485_spy_task();
 		}
-
 	}
+}
+
+/* PRINT AN RS485 REPLY OVER AT INTERFACE.
+ * @param rs485_reply:	String to print.
+ * @return:				None.
+ */
+void AT_print_rs485_reply(char_t* rs485_reply) {
+	// Print reply.
+	_AT_reply_add_string(AT_RS485_COMMAND_HEADER);
+	_AT_reply_add_string(rs485_reply);
+	_AT_reply_send();
+}
+
+/* DECODE AND PRINT AN RS485 FRAME.
+ * @param rs485_frame:		Frame to print.
+ * @param rs485_frame_size:	Size of the frame.
+ * @return:					None.
+ */
+void AT_print_rs485_frame(char_t* rs485_frame, uint8_t rs485_frame_size) {
+	// Local variables.
+	uint8_t source_address = 0;
+	uint8_t destination_address = 0;
+	// Check parsing mode.
+	if (at_ctx.address_parsing_enable == 0) {
+		_AT_reply_add_string(rs485_frame);
+	}
+	else {
+		// Check length.
+		if (rs485_frame_size >= RS485_FRAME_FIELD_INDEX_DATA) {
+			// Print source address.
+			source_address = ((uint8_t) (rs485_frame[RS485_FRAME_FIELD_INDEX_SOURCE_ADDRESS])) & RS485_ADDRESS_MASK;
+			_AT_reply_add_value((int32_t) source_address, STRING_FORMAT_HEXADECIMAL, 1);
+			_AT_reply_add_string(" > ");
+			// Print destination address.
+			destination_address = ((uint8_t) (rs485_frame[RS485_FRAME_FIELD_INDEX_DESTINATION_ADDRESS])) & RS485_ADDRESS_MASK;
+			_AT_reply_add_value((int32_t) destination_address, STRING_FORMAT_HEXADECIMAL, 1);
+			_AT_reply_add_string(" : ");
+			// Print command.
+			_AT_reply_add_string((char_t*) &(rs485_frame[RS485_FRAME_FIELD_INDEX_DATA]));
+		}
+	}
+	_AT_reply_send();
 }
 
 /* FILL AT COMMAND BUFFER WITH A NEW BYTE (CALLED BY USART INTERRUPT).
@@ -596,10 +579,7 @@ void AT_fill_rx_buffer(uint8_t rx_byte) {
 			// Store new byte.
 			at_ctx.command[at_ctx.command_size] = rx_byte;
 			// Manage index.
-			at_ctx.command_size++;
-			if (at_ctx.command_size >= AT_COMMAND_BUFFER_SIZE) {
-				at_ctx.command_size = 0;
-			}
+			at_ctx.command_size = (at_ctx.command_size + 1) % AT_COMMAND_BUFFER_SIZE;
 		}
 	}
 }
