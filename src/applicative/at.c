@@ -363,6 +363,7 @@ static void _AT_send_rs485_command_callback(void) {
 	RS485_status_t rs485_status = RS485_SUCCESS;
 	RS485_mode_t rs485_mode = RS485_MODE_DIRECT;
 	int32_t node_address = 0;
+	uint8_t command_offset = 0;
 	// Check if TX is allowed.
 	if (CONFIG_get_tx_mode() == CONFIG_TX_DISABLED) {
 		_AT_print_error(ERROR_TX_DISABLED);
@@ -380,17 +381,21 @@ static void _AT_send_rs485_command_callback(void) {
 		// Addressed mode.
 		rs485_mode = RS485_MODE_ADDRESSED;
 		_AT_reply_add_string("Addressed mode");
+		command_offset = at_ctx.parser.separator_idx + 1;
 	}
 	else {
 		// Direct mode.
 		rs485_mode = RS485_MODE_DIRECT;
 		_AT_reply_add_string("Direct mode");
+		command_offset = 1;
 	}
 	_AT_reply_send();
-	// RS485 address found.
+	// Set mode.
 	rs485_status = RS485_set_mode(rs485_mode);
 	RS485_error_check_print();
-	rs485_status = RS485_send_command(node_address, (char_t*) &(at_ctx.command[at_ctx.parser.separator_idx + 1]));
+	// Send command.
+	command_offset =
+	rs485_status = RS485_send_command(node_address, (char_t*) &(at_ctx.command[command_offset]));
 	RS485_error_check_print();
 errors:
 	return;

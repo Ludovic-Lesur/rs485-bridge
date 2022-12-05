@@ -365,6 +365,8 @@ RS485_status_t RS485_send_command(uint8_t node_address, char_t* command) {
 	RS485_reply_input_t reply_in;
 	RS485_reply_output_t reply_out;
 	uint8_t rep_idx = 0;
+	uint8_t rep_offset = (rs485_ctx.mode == RS485_MODE_ADDRESSED) ? RS485_FRAME_FIELD_INDEX_SOURCE_ADDRESS : 0;
+	uint8_t rep_min_size = (rs485_ctx.mode == RS485_MODE_ADDRESSED) ? RS485_ADDRESS_SIZE_BYTES : 0;
 	// Check parameters.
 	if (command == NULL) {
 		status = RS485_ERROR_NULL_PARAMETER;
@@ -390,9 +392,9 @@ RS485_status_t RS485_send_command(uint8_t node_address, char_t* command) {
 	// Replies loop.
 	for (rep_idx=0 ; rep_idx<RS485_REPLY_BUFFER_DEPTH ; rep_idx++) {
 		// Check reply size.
-		if (rs485_ctx.reply[rep_idx].size > RS485_ADDRESS_SIZE_BYTES) {
-			// Skip source address.
-			AT_print_rs485_reply((char_t*) &(rs485_ctx.reply[rep_idx].buffer[RS485_FRAME_FIELD_INDEX_SOURCE_ADDRESS]));
+		if (rs485_ctx.reply[rep_idx].size > rep_min_size) {
+			// Skip source address in case of addressed mode.
+			AT_print_rs485_reply((char_t*) &(rs485_ctx.reply[rep_idx].buffer[rep_offset]));
 		}
 	}
 errors:
