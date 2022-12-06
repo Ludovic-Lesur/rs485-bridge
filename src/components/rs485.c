@@ -343,6 +343,7 @@ RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size
 				// Update board ID.
 				nodes_list[node_list_idx].board_id = (uint8_t) reply_out.value;
 			}
+			node_list_idx++;
 		}
 		IWDG_reload();
 	}

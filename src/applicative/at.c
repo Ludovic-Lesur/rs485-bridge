@@ -273,7 +273,7 @@ static void _AT_adc_callback(void) {
 	_AT_reply_send();
 	// RS bus voltage.
 	_AT_reply_add_string("Vrs=");
-	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VRS_MV + 7, &voltage_mv);
+	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VRS_MV, &voltage_mv);
 	ADC1_error_check_print();
 	_AT_reply_add_value((int32_t) voltage_mv, STRING_FORMAT_DECIMAL, 0);
 	_AT_reply_add_string("mV");
