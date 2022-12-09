@@ -9,6 +9,7 @@
 
 #include "adc.h"
 #include "config.h"
+#include "dim.h"
 #include "dinfox.h"
 #include "error.h"
 #include "lptim.h"
@@ -17,6 +18,7 @@
 #include "nvic.h"
 #include "parser.h"
 #include "pwr.h"
+#include "rcc_reg.h"
 #include "rs485.h"
 #include "rs485_common.h"
 #include "string.h"
@@ -47,6 +49,8 @@ static void _AT_print_sw_version(void);
 static void _AT_print_error_stack(void);
 static void _AT_adc_callback(void);
 static void _AT_scan_callback(void);
+static void _AT_read_callback(void);
+static void _AT_write_callback(void);
 static void _AT_send_rs485_command_callback(void);
 static void _AT_spy_callback(void);
 
@@ -84,6 +88,8 @@ static const AT_command_t AT_COMMAND_LIST[] = {
 	{PARSER_MODE_COMMAND, "AT$RST", STRING_NULL, "Reset MCU", PWR_software_reset},
 	{PARSER_MODE_COMMAND, "AT$ADC?", STRING_NULL, "Get ADC measurements", _AT_adc_callback},
 	{PARSER_MODE_COMMAND, "AT$SCAN", STRING_NULL, "Scan all slaves connected to the RS485 bus", _AT_scan_callback},
+	{PARSER_MODE_HEADER, "AT$R=", "address[hex]", "Read register", _AT_read_callback},
+	{PARSER_MODE_HEADER, "AT$W=", "address[hex],value[hex]", "Write register",_AT_write_callback},
 	{PARSER_MODE_HEADER, AT_RS485_COMMAND_HEADER, "node_address[hex],command[str]", "Send a command to a specific RS485 node", _AT_send_rs485_command_callback},
 	{PARSER_MODE_HEADER, AT_RS485_COMMAND_HEADER, "command[str]", "Send a command over RS485 bus without any address header", _AT_send_rs485_command_callback},
 	{PARSER_MODE_HEADER, "AT$SPY=", "enable[bit],address_parsing_enable[bit]", "Start or stop continuous RS485 bus listening", _AT_spy_callback},
@@ -348,6 +354,125 @@ static void _AT_scan_callback(void) {
 		}
 		_AT_reply_send();
 	}
+	_AT_print_ok();
+errors:
+	return;
+}
+
+/* AT$R EXECUTION CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _AT_read_callback(void) {
+	// Local variables.
+	PARSER_status_t parser_status = PARSER_SUCCESS;
+	NVM_status_t nvm_status = NVM_SUCCESS;
+	ADC_status_t adc1_status = ADC_SUCCESS;
+	int32_t register_address = 0;
+	uint8_t generic_u8 = 0;
+	int8_t generic_s8 = 0;
+	uint32_t generic_u32 = 0;
+	// Read address parameter.
+	parser_status = PARSER_get_parameter(&at_ctx.parser, STRING_FORMAT_HEXADECIMAL, STRING_CHAR_NULL, &register_address);
+	PARSER_error_check_print();
+	// Get data.
+	switch (register_address) {
+	case DINFOX_REGISTER_RS485_ADDRESS:
+		nvm_status = NVM_read_byte(NVM_ADDRESS_RS485_ADDRESS, &generic_u8);
+		NVM_error_check_print();
+		_AT_reply_add_value(generic_u8, STRING_FORMAT_HEXADECIMAL, 0);
+		break;
+	case DINFOX_REGISTER_BOARD_ID:
+		_AT_reply_add_value(DINFOX_BOARD_ID_DIM, STRING_FORMAT_HEXADECIMAL, 0);
+		break;
+	case DINFOX_REGISTER_RESET:
+		_AT_reply_add_value((((RCC -> CSR) >> 24) & 0xFF), STRING_FORMAT_HEXADECIMAL, 0);
+		break;
+	case DINFOX_REGISTER_SW_VERSION_MAJOR:
+		_AT_reply_add_value(GIT_MAJOR_VERSION, STRING_FORMAT_DECIMAL, 0);
+		break;
+	case DINFOX_REGISTER_SW_VERSION_MINOR:
+		_AT_reply_add_value(GIT_MINOR_VERSION, STRING_FORMAT_DECIMAL, 0);
+		break;
+	case DINFOX_REGISTER_SW_VERSION_COMMIT_INDEX:
+		_AT_reply_add_value(GIT_COMMIT_INDEX, STRING_FORMAT_DECIMAL, 0);
+		break;
+	case DINFOX_REGISTER_SW_VERSION_COMMIT_ID:
+		_AT_reply_add_value(GIT_COMMIT_ID, STRING_FORMAT_HEXADECIMAL, 0);
+		break;
+	case DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG:
+		_AT_reply_add_value(GIT_DIRTY_FLAG, STRING_FORMAT_BOOLEAN, 0);
+		break;
+	case DINFOX_REGISTER_ERROR_STACK:
+		_AT_reply_add_value(ERROR_stack_read(), STRING_FORMAT_HEXADECIMAL, 0);
+		break;
+	case DINFOX_REGISTER_VMCU_MV:
+	case DIM_REGISTER_VUSB_MV:
+	case DIM_REGISTER_VRS_MV:
+		// Perform analog measurements.
+		adc1_status = ADC1_perform_measurements();
+		ADC1_error_check_print();
+		// Note: indexing only works if registers addresses are ordered in the same way as ADC data indexes.
+		adc1_status = ADC1_get_data((register_address - DINFOX_REGISTER_VMCU_MV), &generic_u32);
+		ADC1_error_check_print();
+		_AT_reply_add_value((int32_t) generic_u32, STRING_FORMAT_DECIMAL, 0);
+		break;
+	case DINFOX_REGISTER_TMCU_DEGREES:
+		// Perform analog measurements.
+		adc1_status = ADC1_perform_measurements();
+		ADC1_error_check_print();
+		// Read temperature.
+		adc1_status = ADC1_get_tmcu(&generic_s8);
+		ADC1_error_check_print();
+		_AT_reply_add_value((int32_t) generic_s8, STRING_FORMAT_DECIMAL, 0);
+		break;
+	default:
+		_AT_print_error(ERROR_REGISTER_ADDRESS);
+		goto errors;
+	}
+	// Send response.
+	_AT_reply_send();
+errors:
+	return;
+}
+
+/* AT$W EXECUTION CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _AT_write_callback(void) {
+	// Local variables.
+	PARSER_status_t parser_status = PARSER_SUCCESS;
+	NVM_status_t nvm_status = NVM_SUCCESS;
+	int32_t register_value = 0;
+	int32_t register_address = 0;
+	// Read address parameter.
+	parser_status = PARSER_get_parameter(&at_ctx.parser, STRING_FORMAT_HEXADECIMAL, AT_CHAR_SEPARATOR, &register_address);
+	PARSER_error_check_print();
+	// Check address.
+	if (register_address >= DIM_REGISTER_LAST) {
+		_AT_print_error(ERROR_REGISTER_ADDRESS);
+		goto errors;
+	}
+	// Write data.
+	switch (register_address) {
+	case DINFOX_REGISTER_RS485_ADDRESS:
+		// Read new address.
+		parser_status = PARSER_get_parameter(&at_ctx.parser, STRING_FORMAT_HEXADECIMAL, STRING_CHAR_NULL, &register_value);
+		PARSER_error_check_print();
+		// Check value.
+		if (register_value > RS485_ADDRESS_LAST) {
+			_AT_print_error(ERROR_RS485_ADDRESS);
+			goto errors;
+		}
+		nvm_status = NVM_write_byte(NVM_ADDRESS_RS485_ADDRESS, (uint8_t) register_value);
+		NVM_error_check_print();
+		break;
+	default:
+		_AT_print_error(ERROR_REGISTER_READ_ONLY);
+		goto errors;
+	}
+	// Operation completed.
 	_AT_print_ok();
 errors:
 	return;

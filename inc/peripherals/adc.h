@@ -27,9 +27,9 @@ typedef enum {
 } ADC_status_t;
 
 typedef enum {
-	ADC_DATA_INDEX_VUSB_MV = 0,
+	ADC_DATA_INDEX_VMCU_MV = 0,
+	ADC_DATA_INDEX_VUSB_MV,
 	ADC_DATA_INDEX_VRS_MV,
-	ADC_DATA_INDEX_VMCU_MV,
 	ADC_DATA_INDEX_LAST
 } ADC_data_index_t;
 

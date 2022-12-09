@@ -23,13 +23,12 @@
 #define LPUART_STRING_SIZE_MAX	1000
 #define LPUART_TIMEOUT_COUNT	100000
 
-#define LPUART_NODE_ADDRESS		0x00
-
 /*** LPUART local structures ***/
 
 typedef struct {
+	uint8_t node_address;
 	RS485_mode_t mode;
-	volatile uint32_t rx_byte_count;
+	volatile uint8_t rx_byte_count;
 } LPUART_context_t;
 
 /*** LPUART local global variables ***/
@@ -98,13 +97,20 @@ errors:
 /*** LPUART functions ***/
 
 /* CONFIGURE LPUART1.
- * @param:	None.
- * @return:	None.
+ * @param node_address:	RS485 7-bits address
+ * @return status:		Function execution status.
  */
-void LPUART1_init(void) {
+LPUART_status_t LPUART1_init(uint8_t node_address) {
 	// Local variables.
+	LPUART_status_t status = LPUART_SUCCESS;
 	uint32_t brr = 0;
+	// Check parameter.
+	if (node_address > RS485_ADDRESS_LAST) {
+		// Do not exit, just store error and apply mask.
+		status = LPUART_ERROR_NODE_ADDRESS;
+	}
 	// Init context.
+	lpuart_ctx.node_address = (node_address & RS485_ADDRESS_MASK);
 	lpuart_ctx.mode = RS485_MODE_DIRECT;
 	lpuart_ctx.rx_byte_count = 0;
 	// Select LSE as clock source.
@@ -118,7 +124,7 @@ void LPUART1_init(void) {
 	LPUART1_disable_rx();
 	// Configure peripheral in direct mode by default.
 	LPUART1 -> CR1 |= 0x00000022;
-	LPUART1 -> CR2 |= ((LPUART_NODE_ADDRESS & 0x7F) << 24) | (0b1 << 4);
+	LPUART1 -> CR2 |= ((lpuart_ctx.node_address & 0x7F) << 24) | (0b1 << 4);
 	LPUART1 -> CR3 |= 0x00B05000;
 	// Baud rate.
 	brr = (RCC_LSE_FREQUENCY_HZ * 256);
@@ -128,7 +134,10 @@ void LPUART1_init(void) {
 	NVIC_set_priority(NVIC_INTERRUPT_LPUART1, 0);
 	EXTI_configure_line(EXTI_LINE_LPUART1, EXTI_TRIGGER_RISING_EDGE);
 	// Enable transmitter.
-	LPUART1 -> CR1 |= (0b1 << 3) | (0b1 << 0); // TE='1' and UE='1'.
+	LPUART1 -> CR1 |= (0b1 << 3); // TE='1'.
+	// Enable peripheral.
+	LPUART1 -> CR1 |= (0b1 << 0); // UE='1'.
+	return status;
 }
 
 /* CONFIGURE LPUART MODE.
@@ -199,12 +208,11 @@ void LPUART1_disable_rx(void) {
 }
 
 /* SEND A COMMAND TO AN RS485 NODE.
- * @param node_address_enable:	Enable or disable destination address header.
- * @param node_address:			RS485 address of the destination board.
- * @param command:				Command to send.
- * @return:						None.
+ * @param slave_address:	RS485 address of the destination board.
+ * @param command:			Command to send.
+ * @return:					None.
  */
-LPUART_status_t LPUART1_send_command(uint8_t node_address, char_t* command) {
+LPUART_status_t LPUART1_send_command(uint8_t slave_address, char_t* command) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
 	uint32_t loop_count = 0;
@@ -213,15 +221,15 @@ LPUART_status_t LPUART1_send_command(uint8_t node_address, char_t* command) {
 		status = LPUART_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	if (node_address > RS485_ADDRESS_LAST) {
+	if (slave_address > RS485_ADDRESS_LAST) {
 		status = LPUART_ERROR_NODE_ADDRESS;
 		goto errors;
 	}
 	// Send header if required.
 	if (lpuart_ctx.mode == RS485_MODE_ADDRESSED) {
 		// Send destination and source addresses.
-		_LPUART1_fill_tx_buffer(node_address | 0x80);
-		_LPUART1_fill_tx_buffer(LPUART_NODE_ADDRESS);
+		_LPUART1_fill_tx_buffer(slave_address | 0x80);
+		_LPUART1_fill_tx_buffer(lpuart_ctx.node_address);
 	}
 	// Fill TX buffer with new bytes.
 	while (*command) {
@@ -232,16 +240,6 @@ LPUART_status_t LPUART1_send_command(uint8_t node_address, char_t* command) {
 		if (loop_count > LPUART_STRING_SIZE_MAX) {
 			status = LPUART_ERROR_STRING_SIZE;
 			goto errors;
-		}
-	}
-	// Wait for TC flag.
-	loop_count = 0;
-	while (((LPUART1 -> ISR) & (0b1 << 6)) == 0) {
-		// Wait for TC='1' or timeout.
-		loop_count++;
-		if (loop_count > LPUART_TIMEOUT_COUNT) {
-			status = LPUART_ERROR_TC_TIMEOUT;
-			break;
 		}
 	}
 errors:

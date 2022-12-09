@@ -25,17 +25,6 @@ typedef enum {
 	DINFOX_BOARD_ID_ERROR
 } DINFOX_board_id_t;
 
-static const char_t DINFOX_BOARD_ID_NAME[][DINFOX_BOARD_ID_LAST] = {
-	"LVRM",
-	"BPSM",
-	"DDRM",
-	"UHFM",
-	"GPSM",
-	"SM",
-	"DIM",
-	"RRM"
-};
-
 typedef enum {
 	DINFOX_REGISTER_RS485_ADDRESS = 0,
 	DINFOX_REGISTER_BOARD_ID,
@@ -46,7 +35,20 @@ typedef enum {
 	DINFOX_REGISTER_SW_VERSION_COMMIT_ID,
 	DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG,
 	DINFOX_REGISTER_ERROR_STACK,
+	DINFOX_REGISTER_TMCU_DEGREES,
+	DINFOX_REGISTER_VMCU_MV,
 	DINFOX_REGISTER_LAST
 } DINFOX_common_registers_t;
+
+static const char_t DINFOX_BOARD_ID_NAME[][DINFOX_BOARD_ID_LAST] = {
+	"LVRM",
+	"BPSM",
+	"DDRM",
+	"UHFM",
+	"GPSM",
+	"SM",
+	"DIM",
+	"RRM"
+};
 
 #endif /* __DINFOX_H__ */

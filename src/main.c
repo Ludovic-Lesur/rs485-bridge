@@ -15,6 +15,7 @@
 #include "lpuart.h"
 #include "mapping.h"
 #include "nvic.h"
+#include "nvm.h"
 #include "pwr.h"
 #include "rcc.h"
 #include "rtc.h"
@@ -65,6 +66,9 @@ static void DIM_init_hw(void) {
 	RCC_status_t rcc_status = RCC_SUCCESS;
 	RTC_status_t rtc_status = RTC_SUCCESS;
 	ADC_status_t adc1_status = ADC_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	NVM_status_t nvm_status = NVM_SUCCESS;
+	uint8_t node_address;
 #ifndef DEBUG
 	IWDG_status_t iwdg_status = IWDG_SUCCESS;
 #endif
@@ -110,13 +114,15 @@ static void DIM_init_hw(void) {
 		dim_ctx.status.lse_status = 0;
 	}
 	IWDG_reload();
-	// Internal.
+	// Read RS485 address in NVM.
+	nvm_status = NVM_read_byte(NVM_ADDRESS_RS485_ADDRESS, &node_address);
+	NVM_error_check();
+	// Init peripherals.
 	LPTIM1_init(dim_ctx.lsi_frequency_hz);
-	// Analog.
 	adc1_status = ADC1_init();
 	ADC1_error_check();
-	// Communication interfaces.
-	LPUART1_init();
+	lpuart1_status = LPUART1_init(node_address);
+	LPUART1_error_check();
 	USART2_init();
 	// Init AT interface.
 	AT_init();
