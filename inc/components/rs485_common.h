@@ -24,7 +24,7 @@
 typedef uint8_t	RS485_address_t;
 
 typedef enum {
-	RS485_MODE_DIRECT,
+	RS485_MODE_DIRECT = 0,
 	RS485_MODE_ADDRESSED,
 	RS485_MODE_LAST
 } RS485_mode_t;

@@ -182,13 +182,13 @@ static RS485_status_t _RS485_wait_reply(RS485_reply_input_t* reply_in_ptr, RS485
 				// Check mode.
 				if (rs485_ctx.mode == RS485_MODE_ADDRESSED) {
 					// Check source address.
-					if (rs485_ctx.reply[idx].buffer[0] != (reply_in_ptr -> expected_source_address)) {
+					if (rs485_ctx.reply[idx].buffer[RS485_FRAME_FIELD_INDEX_SOURCE_ADDRESS] != (reply_in_ptr -> expected_source_address)) {
 						status = RS485_ERROR_SOURCE_ADDRESS_MISMATCH;
 						continue;
 					}
 					// Skip source address before parsing.
-					rs485_ctx.reply[idx].parser.buffer = (char_t*) &(rs485_ctx.reply[idx].buffer[1]);
-					rs485_ctx.reply[idx].parser.buffer_size = (rs485_ctx.reply[idx].size > 0) ? (rs485_ctx.reply[idx].size - 1) : 0;
+					rs485_ctx.reply[idx].parser.buffer = (char_t*) &(rs485_ctx.reply[idx].buffer[RS485_FRAME_FIELD_INDEX_DATA]);
+					rs485_ctx.reply[idx].parser.buffer_size = (rs485_ctx.reply[idx].size > 0) ? (rs485_ctx.reply[idx].size - RS485_FRAME_FIELD_INDEX_DATA) : 0;
 				}
 				else {
 					// Update buffer length.
@@ -254,6 +254,17 @@ errors:
 
 /*** RS485 functions ***/
 
+/* INIT RS485 INTERFACE.
+ * @param:	None.
+ * @return:	None.
+ */
+void RS485_init(void) {
+	// Reset parser.
+	_RS485_reset_replies();
+	// Enable receiver.
+	LPUART1_enable_rx();
+}
+
 /* SET RS485 MODE.
  * @param mode:		Transmission mode (direct or addressed).
  * @return status:	Function execution status.
@@ -313,12 +324,12 @@ RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size
 		// Build command.
 		_RS485_build_command("RS");
 		// Send ping command.
+		LPUART1_disable_rx();
 		lpuart1_status = LPUART1_send_command(node_address, rs485_ctx.command);
+		LPUART1_enable_rx();
 		LPUART1_status_check(RS485_ERROR_BASE_LPUART);
 		// Wait reply.
-		LPUART1_enable_rx();
 		status = _RS485_wait_reply(&reply_in, &reply_out);
-		LPUART1_disable_rx();
 		if (status == RS485_SUCCESS) {
 			// Node found (even if an error was returned after ping command).
 			(*number_of_nodes_found)++;
@@ -333,12 +344,12 @@ RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size
 			// Build command.
 			_RS485_build_command("RS$R=01");
 			// Get board ID.
+			LPUART1_disable_rx();
 			lpuart1_status = LPUART1_send_command(node_address, rs485_ctx.command);
+			LPUART1_enable_rx();
 			LPUART1_status_check(RS485_ERROR_BASE_LPUART);
 			// Wait reply.
-			LPUART1_enable_rx();
 			status = _RS485_wait_reply(&reply_in, &reply_out);
-			LPUART1_disable_rx();
 			if ((status == RS485_SUCCESS) && (reply_out.error_flag == 0)) {
 				// Update board ID.
 				nodes_list[node_list_idx].board_id = (uint8_t) reply_out.value;
@@ -349,25 +360,18 @@ RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size
 	}
 	return RS485_SUCCESS;
 errors:
-	// Disable receiver.
-	LPUART1_disable_rx();
 	return status;
 }
 
 /* SEND A COMMAND ON RS485 BUS.
- * @param node_address:	Slave address.
- * @param command:		Command to send.
- * @return status:		Function execution status.
+ * @param slave_address:	Slave address.
+ * @param command:			Command to send.
+ * @return status:			Function execution status.
  */
-RS485_status_t RS485_send_command(uint8_t node_address, char_t* command) {
+RS485_status_t RS485_send_command(uint8_t slave_address, char_t* command) {
 	// Local variables.
 	RS485_status_t status = RS485_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
-	RS485_reply_input_t reply_in;
-	RS485_reply_output_t reply_out;
-	uint8_t rep_idx = 0;
-	uint8_t rep_offset = (rs485_ctx.mode == RS485_MODE_ADDRESSED) ? RS485_FRAME_FIELD_INDEX_SOURCE_ADDRESS : 0;
-	uint8_t rep_min_size = (rs485_ctx.mode == RS485_MODE_ADDRESSED) ? RS485_ADDRESS_SIZE_BYTES : 0;
 	// Check parameters.
 	if (command == NULL) {
 		status = RS485_ERROR_NULL_PARAMETER;
@@ -375,62 +379,23 @@ RS485_status_t RS485_send_command(uint8_t node_address, char_t* command) {
 	}
 	// Build command.
 	_RS485_build_command(command);
-	// Build reply input common parameters.
-	reply_in.type = RS485_REPLY_TYPE_RAW;
-	reply_in.expected_source_address = node_address;
-	reply_in.format = STRING_FORMAT_HEXADECIMAL;
-	reply_in.timeout_ms = RS485_REPLY_TIMEOUT_MS;
-	// Reset parser.
-	_RS485_reset_replies();
 	// Send command.
-	lpuart1_status = LPUART1_send_command(node_address, rs485_ctx.command);
+	LPUART1_disable_rx();
+	lpuart1_status = LPUART1_send_command(slave_address, rs485_ctx.command);
+	LPUART1_enable_rx();
+	// TODO TC check to avoid echo ?
 	LPUART1_status_check(RS485_ERROR_BASE_LPUART);
-	// Wait reply.
-	LPUART1_enable_rx();
-	status = _RS485_wait_reply(&reply_in, &reply_out);
-	LPUART1_disable_rx();
-	if (status != RS485_SUCCESS) goto errors;
-	// Replies loop.
-	for (rep_idx=0 ; rep_idx<RS485_REPLY_BUFFER_DEPTH ; rep_idx++) {
-		// Check reply size.
-		if (rs485_ctx.reply[rep_idx].size > rep_min_size) {
-			// Skip source address in case of addressed mode.
-			AT_print_rs485_reply((char_t*) &(rs485_ctx.reply[rep_idx].buffer[rep_offset]));
-		}
-	}
 errors:
-	// Disable receiver.
-	LPUART1_disable_rx();
 	return status;
-}
-
-/* START CONTINUOUS LISTENING.
- * @param:	None.
- * @return:	None.
- */
-void RS485_start_spy(void) {
-	// Reset parser.
-	_RS485_reset_replies();
-	// Enable receiver.
-	LPUART1_enable_rx();
-}
-
-/* STOP CONTINUOUS LISTENING.
- * @param:	None.
- * @return:	None.
- */
-void RS485_stop_spy(void) {
-	// Disable receiver.
-	LPUART1_disable_rx();
 }
 
 /* CONTINUOUS LISTENING TASK.
  * @param:	None.
  * @return:	None.
  */
-void RS485_spy_task(void) {
+void RS485_task(void) {
 	// Check line end flag on current reply.
-	if (rs485_ctx.reply[rs485_ctx.reply_read_idx].line_end_flag != 0) {
+	while (rs485_ctx.reply[rs485_ctx.reply_read_idx].line_end_flag != 0) {
 		// Print frame.
 		AT_print_rs485_frame((char_t*) rs485_ctx.reply[rs485_ctx.reply_read_idx].buffer, rs485_ctx.reply[rs485_ctx.reply_read_idx].size);
 		// Reset reply.
@@ -438,16 +403,6 @@ void RS485_spy_task(void) {
 		// Increment read index.
 		rs485_ctx.reply_read_idx = (rs485_ctx.reply_read_idx + 1) % RS485_REPLY_BUFFER_DEPTH;
 	}
-}
-
-/* CHECK IF AN RS485 FRAME IS AVAILABLE.
- * @param:					None.
- * @return frame_available:	0 if the reply buffer is empty, 1 otherwise.
- */
-uint8_t RS485_is_frame_available(void) {
-	// Local variables.
-	uint8_t frame_available = (rs485_ctx.reply_read_idx == rs485_ctx.reply_write_idx) ? 0 : 1;
-	return frame_available;
 }
 
 /* FILL RS485 BUFFER WITH A NEW BYTE (CALLED BY LPUART INTERRUPT).

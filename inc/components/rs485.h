@@ -32,13 +32,11 @@ typedef enum {
 } RS485_status_t;
 
 /*** RS485 functions ***/
+void RS485_init(void);
 RS485_status_t RS485_set_mode(RS485_mode_t mode);
 RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size, uint8_t* number_of_nodes_found);
-RS485_status_t RS485_send_command(uint8_t node_address, char_t* command);
-void RS485_start_spy(void);
-void RS485_stop_spy(void);
-void RS485_spy_task(void);
-uint8_t RS485_is_frame_available(void);
+RS485_status_t RS485_send_command(uint8_t slave_address, char_t* command);
+void RS485_task(void);
 void RS485_fill_rx_buffer(uint8_t rx_byte);
 
 #define RS485_status_check(error_base) { if (rs485_status != RS485_SUCCESS) { status = error_base + rs485_status; goto errors; }}

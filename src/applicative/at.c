@@ -52,7 +52,6 @@ static void _AT_scan_callback(void);
 static void _AT_read_callback(void);
 static void _AT_write_callback(void);
 static void _AT_send_rs485_command_callback(void);
-static void _AT_spy_callback(void);
 
 /*** AT local structures ***/
 
@@ -74,8 +73,8 @@ typedef struct {
 	char_t reply[AT_REPLY_BUFFER_SIZE];
 	uint32_t reply_size;
 	// RS485.
-	uint8_t spy_running;
-	uint8_t address_parsing_enable;
+	uint8_t node_address;
+	RS485_mode_t rs485_mode;
 } AT_context_t;
 
 /*** AT local global variables ***/
@@ -92,7 +91,6 @@ static const AT_command_t AT_COMMAND_LIST[] = {
 	{PARSER_MODE_HEADER, "AT$W=", "address[hex],value[hex]", "Write register",_AT_write_callback},
 	{PARSER_MODE_HEADER, AT_RS485_COMMAND_HEADER, "node_address[hex],command[str]", "Send a command to a specific RS485 node", _AT_send_rs485_command_callback},
 	{PARSER_MODE_HEADER, AT_RS485_COMMAND_HEADER, "command[str]", "Send a command over RS485 bus without any address header", _AT_send_rs485_command_callback},
-	{PARSER_MODE_HEADER, "AT$SPY=", "enable[bit],address_parsing_enable[bit]", "Start or stop continuous RS485 bus listening", _AT_spy_callback},
 };
 
 static AT_context_t at_ctx;
@@ -318,11 +316,6 @@ static void _AT_scan_callback(void) {
 		_AT_print_error(ERROR_TX_DISABLED);
 		goto errors;
 	}
-	// Check if continuous listening is not running.
-	if (at_ctx.spy_running != 0) {
-		_AT_print_error(ERROR_BUSY_SPY_RUNNING);
-		goto errors;
-	}
 	// Perform bus scan.
 	_AT_reply_add_string("RS485 bus scan running...");
 	_AT_reply_send();
@@ -355,6 +348,56 @@ static void _AT_scan_callback(void) {
 		_AT_reply_send();
 	}
 	_AT_print_ok();
+errors:
+	return;
+}
+
+/* RS485 COMMAND EXECUTION CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _AT_send_rs485_command_callback(void) {
+	// Local variables.
+	PARSER_status_t parser_status = PARSER_SUCCESS;
+	RS485_status_t rs485_status = RS485_SUCCESS;
+	int32_t slave_address = 0;
+	uint8_t command_offset = 0;
+	// Check if TX is allowed.
+	if (CONFIG_get_tx_mode() == CONFIG_TX_DISABLED) {
+		_AT_print_error(ERROR_TX_DISABLED);
+		goto errors;
+	}
+	// Try parsing node address.
+	parser_status = PARSER_get_parameter(&at_ctx.parser, STRING_FORMAT_HEXADECIMAL, AT_CHAR_SEPARATOR, &slave_address);
+	// Check status to determine mode.
+	if (parser_status == PARSER_SUCCESS) {
+		// Addressed mode.
+		at_ctx.rs485_mode = RS485_MODE_ADDRESSED;
+		_AT_reply_add_string("Addressed mode");
+		command_offset = at_ctx.parser.separator_idx + 1;
+	}
+	else {
+		// Direct mode.
+		at_ctx.rs485_mode = RS485_MODE_DIRECT;
+		_AT_reply_add_string("Direct mode");
+		command_offset = 1;
+	}
+	_AT_reply_send();
+	// Set mode.
+	rs485_status = RS485_set_mode(at_ctx.rs485_mode);
+	RS485_error_check_print();
+	// Print command in addressed mode.
+	if (at_ctx.rs485_mode == RS485_MODE_ADDRESSED) {
+		_AT_reply_add_value(at_ctx.node_address, STRING_FORMAT_HEXADECIMAL, 1);
+		_AT_reply_add_string(" > ");
+		_AT_reply_add_value(slave_address, STRING_FORMAT_HEXADECIMAL, 1);
+		_AT_reply_add_string(" : ");
+		_AT_reply_add_string((char_t*) &(at_ctx.command[command_offset]));
+		_AT_reply_send();
+	}
+	// Send command.
+	rs485_status = RS485_send_command(slave_address, (char_t*) &(at_ctx.command[command_offset]));
+	RS485_error_check_print();
 errors:
 	return;
 }
@@ -426,6 +469,9 @@ static void _AT_read_callback(void) {
 		ADC1_error_check_print();
 		_AT_reply_add_value((int32_t) generic_s8, STRING_FORMAT_DECIMAL, 0);
 		break;
+	case DIM_REGISTER_RS485_MODE:
+		_AT_reply_add_value(at_ctx.rs485_mode, STRING_FORMAT_DECIMAL, 0);
+		break;
 	default:
 		_AT_print_error(ERROR_REGISTER_ADDRESS);
 		goto errors;
@@ -465,104 +511,22 @@ static void _AT_write_callback(void) {
 			_AT_print_error(ERROR_RS485_ADDRESS);
 			goto errors;
 		}
+		at_ctx.node_address = register_value;
 		nvm_status = NVM_write_byte(NVM_ADDRESS_RS485_ADDRESS, (uint8_t) register_value);
 		NVM_error_check_print();
+		break;
+	case DIM_REGISTER_RS485_MODE:
+		// Read new mode.
+		parser_status = PARSER_get_parameter(&at_ctx.parser, STRING_FORMAT_BOOLEAN, STRING_CHAR_NULL, &register_value);
+		PARSER_error_check_print();
+		// Update mode.
+		at_ctx.rs485_mode = register_value;
 		break;
 	default:
 		_AT_print_error(ERROR_REGISTER_READ_ONLY);
 		goto errors;
 	}
 	// Operation completed.
-	_AT_print_ok();
-errors:
-	return;
-}
-
-/* RS485 COMMAND EXECUTION CALLBACK.
- * @param:	None.
- * @return:	None.
- */
-static void _AT_send_rs485_command_callback(void) {
-	// Local variables.
-	PARSER_status_t parser_status = PARSER_SUCCESS;
-	RS485_status_t rs485_status = RS485_SUCCESS;
-	RS485_mode_t rs485_mode = RS485_MODE_DIRECT;
-	int32_t node_address = 0;
-	uint8_t command_offset = 0;
-	// Check if TX is allowed.
-	if (CONFIG_get_tx_mode() == CONFIG_TX_DISABLED) {
-		_AT_print_error(ERROR_TX_DISABLED);
-		goto errors;
-	}
-	// Check if continuous listening is not running.
-	if (at_ctx.spy_running != 0) {
-		_AT_print_error(ERROR_BUSY_SPY_RUNNING);
-		goto errors;
-	}
-	// Try parsing node address.
-	parser_status = PARSER_get_parameter(&at_ctx.parser, STRING_FORMAT_HEXADECIMAL, AT_CHAR_SEPARATOR, &node_address);
-	// Check status to determine mode.
-	if (parser_status == PARSER_SUCCESS) {
-		// Addressed mode.
-		rs485_mode = RS485_MODE_ADDRESSED;
-		_AT_reply_add_string("Addressed mode");
-		command_offset = at_ctx.parser.separator_idx + 1;
-	}
-	else {
-		// Direct mode.
-		rs485_mode = RS485_MODE_DIRECT;
-		_AT_reply_add_string("Direct mode");
-		command_offset = 1;
-	}
-	_AT_reply_send();
-	// Set mode.
-	rs485_status = RS485_set_mode(rs485_mode);
-	RS485_error_check_print();
-	// Send command.
-	command_offset =
-	rs485_status = RS485_send_command(node_address, (char_t*) &(at_ctx.command[command_offset]));
-	RS485_error_check_print();
-errors:
-	return;
-}
-
-/* AT$SPY COMMAND EXECUTION CALLBACK.
- * @param:	None.
- * @return:	None.
- */
-static void _AT_spy_callback(void) {
-	// Local variables.
-	PARSER_status_t parser_status = PARSER_SUCCESS;
-	RS485_status_t rs485_status = RS485_SUCCESS;
-	int32_t enable = 0;
-	int32_t address_parsing_enable = 0;
-	// Parse enable parameter.
-	parser_status = PARSER_get_parameter(&at_ctx.parser, STRING_FORMAT_BOOLEAN, AT_CHAR_SEPARATOR, &enable);
-	PARSER_error_check_print();
-	// Parser address parsing enable parameter.
-	parser_status = PARSER_get_parameter(&at_ctx.parser, STRING_FORMAT_BOOLEAN, STRING_CHAR_NULL, &address_parsing_enable);
-	PARSER_error_check_print();
-	// Check enable bit.
-	if (enable == 0) {
-		_AT_reply_add_string("Stopping continuous listening...");
-		// Stop continuous listening.
-		RS485_stop_spy();
-		// Update flag.
-		at_ctx.spy_running = 0;
-	}
-	else {
-		_AT_reply_add_string("Starting continuous listening...");
-		// Start continuous listening.
-		rs485_status = RS485_set_mode(RS485_MODE_DIRECT);
-		RS485_error_check_print();
-		RS485_start_spy();
-		// Update flag.
-		at_ctx.spy_running = 1;
-	}
-	// Update mode.
-	at_ctx.address_parsing_enable = (uint8_t) address_parsing_enable;
-	// Send response.
-	_AT_reply_send();
 	_AT_print_ok();
 errors:
 	return;
@@ -621,10 +585,17 @@ errors:
  * @return:	None.
  */
 void AT_init(void) {
+	// Local variables.
+	NVM_status_t nvm_status = NVM_SUCCESS;
+	// Read RS485 address for printing.
+	nvm_status = NVM_read_byte(NVM_ADDRESS_RS485_ADDRESS, &at_ctx.node_address);
+	NVM_error_check();
 	// Init context.
 	_AT_reset_parser();
-	at_ctx.spy_running = 0;
-	at_ctx.address_parsing_enable = 0;
+	at_ctx.rs485_mode = RS485_MODE_DIRECT;
+	// Start continuous listening.
+	RS485_set_mode(at_ctx.rs485_mode);
+	RS485_init();
 	// Enable USART.
 	USART2_enable_interrupt();
 }
@@ -641,14 +612,8 @@ void AT_task(void) {
 		_AT_decode();
 		USART2_enable_interrupt();
 	}
-	// Perform spy task if needed.
-	if (at_ctx.spy_running != 0) {
-		// Polling task.
-		while (RS485_is_frame_available() != 0) {
-			// Get frame.
-			RS485_spy_task();
-		}
-	}
+	// Perform continuous listening task.
+	RS485_task();
 }
 
 /* PRINT AN RS485 REPLY OVER AT INTERFACE.
@@ -672,8 +637,9 @@ void AT_print_rs485_frame(char_t* rs485_frame, uint8_t rs485_frame_size) {
 	uint8_t source_address = 0;
 	uint8_t destination_address = 0;
 	// Check parsing mode.
-	if (at_ctx.address_parsing_enable == 0) {
+	if (at_ctx.rs485_mode == RS485_MODE_DIRECT) {
 		_AT_reply_add_string(rs485_frame);
+		_AT_reply_send();
 	}
 	else {
 		// Check length.
@@ -688,9 +654,9 @@ void AT_print_rs485_frame(char_t* rs485_frame, uint8_t rs485_frame_size) {
 			_AT_reply_add_string(" : ");
 			// Print command.
 			_AT_reply_add_string((char_t*) &(rs485_frame[RS485_FRAME_FIELD_INDEX_DATA]));
+			_AT_reply_send();
 		}
 	}
-	_AT_reply_send();
 }
 
 /* FILL AT COMMAND BUFFER WITH A NEW BYTE (CALLED BY USART INTERRUPT).
