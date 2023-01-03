@@ -592,7 +592,7 @@ void AT_init(void) {
 	NVM_error_check();
 	// Init context.
 	_AT_reset_parser();
-	at_ctx.rs485_mode = RS485_MODE_DIRECT;
+	at_ctx.rs485_mode = RS485_MODE_ADDRESSED;
 	// Start continuous listening.
 	RS485_set_mode(at_ctx.rs485_mode);
 	RS485_init();
