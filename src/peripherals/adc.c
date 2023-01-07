@@ -218,6 +218,9 @@ ADC_status_t ADC1_init(void) {
 	// Init GPIOs.
 	GPIO_configure(&GPIO_ADC1_IN4, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	GPIO_configure(&GPIO_ADC1_IN5, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+#ifdef HW1_1
+	GPIO_configure(&GPIO_MNTR_EN, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+#endif
 	// Enable peripheral clock.
 	RCC -> APB2ENR |= (0b1 << 9); // ADCEN='1'.
 	// Ensure ADC is disabled.
@@ -264,10 +267,14 @@ ADC_status_t ADC1_perform_measurements(void) {
 			goto errors;
 		}
 	}
+#ifdef HW1_1
+	// Enable voltage dividers.
+	GPIO_write(&GPIO_MNTR_EN, 1);
+#endif
 	// Wake-up VREFINT and temperature sensor.
 	ADC1 -> CCR |= (0b11 << 22); // TSEN='1' and VREFEF='1'.
-	// Wait internal reference stabilization (max 3ms).
-	lptim1_status = LPTIM1_delay_milliseconds(10, 0);
+	// Wait internal reference and voltage dividers stabilization.
+	lptim1_status = LPTIM1_delay_milliseconds(100, 0);
 	LPTIM1_status_check(ADC_ERROR_BASE_LPTIM);
 	// Perform measurements.
 	status = _ADC1_compute_vrefint();
@@ -281,6 +288,10 @@ ADC_status_t ADC1_perform_measurements(void) {
 errors:
 	// Switch internal voltage reference off.
 	ADC1 -> CCR &= ~(0b11 << 22); // TSEN='0' and VREFEF='0'.
+#ifdef HW1_1
+	// Disable voltage dividers.
+	GPIO_write(&GPIO_MNTR_EN, 0);
+#endif
 	// Disable ADC peripheral.
 	ADC1 -> CR |= (0b1 << 1); // ADDIS='1'.
 	return status;

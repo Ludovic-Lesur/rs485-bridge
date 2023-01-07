@@ -11,6 +11,12 @@
 #include "gpio.h"
 #include "gpio_reg.h"
 
+#ifdef HW1_0
+static const GPIO_pin_t GPIO_RS_POWER_ENABLE =	(GPIO_pin_t) {GPIOA, 0, 0, 0};
+#endif
+#ifdef HW1_1
+static const GPIO_pin_t GPIO_MNTR_EN =			(GPIO_pin_t) {GPIOA, 0, 0, 0};
+#endif
 // LPUART1 (RS485 side).
 static const GPIO_pin_t GPIO_LPUART1_TX =		(GPIO_pin_t) {GPIOA, 0, 2, 6}; // AF6 = LPUART1_TX.
 static const GPIO_pin_t GPIO_LPUART1_RX =		(GPIO_pin_t) {GPIOA, 0, 3, 6}; // AF6 = LPUART1_RX.
