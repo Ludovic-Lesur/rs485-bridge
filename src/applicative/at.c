@@ -428,8 +428,18 @@ static void _AT_read_callback(void) {
 	case DINFOX_REGISTER_BOARD_ID:
 		_AT_reply_add_value(DINFOX_BOARD_ID_DIM, STRING_FORMAT_HEXADECIMAL, 0);
 		break;
-	case DINFOX_REGISTER_RESET:
-		_AT_reply_add_value((((RCC -> CSR) >> 24) & 0xFF), STRING_FORMAT_HEXADECIMAL, 0);
+	case DINFOX_REGISTER_HW_VERSION_MAJOR:
+#if (defined HW1_0) || (defined HW1_1)
+		_AT_reply_add_value(1, STRING_FORMAT_DECIMAL, 0);
+#endif
+		break;
+	case DINFOX_REGISTER_HW_VERSION_MINOR:
+#ifdef HW1_0
+		_AT_reply_add_value(0, STRING_FORMAT_DECIMAL, 0);
+#endif
+#ifdef HW1_1
+		_AT_reply_add_value(1, STRING_FORMAT_DECIMAL, 0);
+#endif
 		break;
 	case DINFOX_REGISTER_SW_VERSION_MAJOR:
 		_AT_reply_add_value(GIT_MAJOR_VERSION, STRING_FORMAT_DECIMAL, 0);
@@ -445,6 +455,9 @@ static void _AT_read_callback(void) {
 		break;
 	case DINFOX_REGISTER_SW_VERSION_DIRTY_FLAG:
 		_AT_reply_add_value(GIT_DIRTY_FLAG, STRING_FORMAT_BOOLEAN, 0);
+		break;
+	case DINFOX_REGISTER_RESET:
+		_AT_reply_add_value((((RCC -> CSR) >> 24) & 0xFF), STRING_FORMAT_HEXADECIMAL, 0);
 		break;
 	case DINFOX_REGISTER_ERROR_STACK:
 		_AT_reply_add_value(ERROR_stack_read(), STRING_FORMAT_HEXADECIMAL, 0);

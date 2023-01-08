@@ -38,7 +38,6 @@ typedef enum {
 
 typedef struct {
 	RS485_reply_type_t type;
-	uint8_t expected_source_address;
 	STRING_format_t format; // For value type.
 	uint32_t timeout_ms;
 } RS485_reply_input_t;
@@ -59,6 +58,7 @@ typedef struct {
 	RS485_mode_t mode;
 	// Command buffer.
 	char_t command[RS485_BUFFER_SIZE_BYTES];
+	uint8_t expected_slave_address;
 	// Response buffers.
 	RS485_reply_buffer_t reply[RS485_REPLY_BUFFER_DEPTH];
 	uint8_t reply_write_idx;
@@ -182,7 +182,7 @@ static RS485_status_t _RS485_wait_reply(RS485_reply_input_t* reply_in_ptr, RS485
 				// Check mode.
 				if (rs485_ctx.mode == RS485_MODE_ADDRESSED) {
 					// Check source address.
-					if (rs485_ctx.reply[idx].buffer[RS485_FRAME_FIELD_INDEX_SOURCE_ADDRESS] != (reply_in_ptr -> expected_source_address)) {
+					if (rs485_ctx.reply[idx].buffer[RS485_FRAME_FIELD_INDEX_SOURCE_ADDRESS] != rs485_ctx.expected_slave_address) {
 						status = RS485_ERROR_SOURCE_ADDRESS_MISMATCH;
 						continue;
 					}
@@ -287,6 +287,33 @@ errors:
 	return status;
 }
 
+/* SEND A COMMAND ON RS485 BUS.
+ * @param slave_address:	Slave address.
+ * @param command:			Command to send.
+ * @return status:			Function execution status.
+ */
+RS485_status_t RS485_send_command(uint8_t slave_address, char_t* command) {
+	// Local variables.
+	RS485_status_t status = RS485_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	// Check parameters.
+	if (command == NULL) {
+		status = RS485_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Store slave address to authenticate next data reception.
+	rs485_ctx.expected_slave_address = slave_address;
+	// Build command.
+	_RS485_build_command(command);
+	// Send command.
+	LPUART1_disable_rx();
+	lpuart1_status = LPUART1_send_command(slave_address, rs485_ctx.command);
+	LPUART1_enable_rx();
+	LPUART1_status_check(RS485_ERROR_BASE_LPUART);
+errors:
+	return status;
+}
+
 /* SCAN ALL NODES ON RS485 BUS.
  * @param nodes_list:				Node list that will be filled.
  * @param node_list_size:			Size of the list (maximum number of nodes which can be recorded).
@@ -296,7 +323,6 @@ errors:
 RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size, uint8_t* number_of_nodes_found) {
 	// Local variables.
 	RS485_status_t status = RS485_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	RS485_reply_input_t reply_in;
 	RS485_reply_output_t reply_out;
 	uint8_t node_address = 0;
@@ -320,14 +346,9 @@ RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size
 		// Reset parser.
 		_RS485_reset_replies();
 		reply_in.type = RS485_REPLY_TYPE_OK;
-		reply_in.expected_source_address = node_address;
-		// Build command.
-		_RS485_build_command("RS");
 		// Send ping command.
-		LPUART1_disable_rx();
-		lpuart1_status = LPUART1_send_command(node_address, rs485_ctx.command);
-		LPUART1_enable_rx();
-		LPUART1_status_check(RS485_ERROR_BASE_LPUART);
+		status = RS485_send_command(node_address, "RS");
+		if (status != RS485_SUCCESS) goto errors;
 		// Wait reply.
 		status = _RS485_wait_reply(&reply_in, &reply_out);
 		if (status == RS485_SUCCESS) {
@@ -341,13 +362,9 @@ RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size
 			// Reset parser.
 			_RS485_reset_replies();
 			reply_in.type = RS485_REPLY_TYPE_VALUE;
-			// Build command.
-			_RS485_build_command("RS$R=01");
 			// Get board ID.
-			LPUART1_disable_rx();
-			lpuart1_status = LPUART1_send_command(node_address, rs485_ctx.command);
-			LPUART1_enable_rx();
-			LPUART1_status_check(RS485_ERROR_BASE_LPUART);
+			status = RS485_send_command(node_address, "RS$R=01");
+			if (status != RS485_SUCCESS) goto errors;
 			// Wait reply.
 			status = _RS485_wait_reply(&reply_in, &reply_out);
 			if ((status == RS485_SUCCESS) && (reply_out.error_flag == 0)) {
@@ -359,32 +376,6 @@ RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size
 		IWDG_reload();
 	}
 	return RS485_SUCCESS;
-errors:
-	return status;
-}
-
-/* SEND A COMMAND ON RS485 BUS.
- * @param slave_address:	Slave address.
- * @param command:			Command to send.
- * @return status:			Function execution status.
- */
-RS485_status_t RS485_send_command(uint8_t slave_address, char_t* command) {
-	// Local variables.
-	RS485_status_t status = RS485_SUCCESS;
-	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
-	// Check parameters.
-	if (command == NULL) {
-		status = RS485_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	// Build command.
-	_RS485_build_command(command);
-	// Send command.
-	LPUART1_disable_rx();
-	lpuart1_status = LPUART1_send_command(slave_address, rs485_ctx.command);
-	LPUART1_enable_rx();
-	// TODO TC check to avoid echo ?
-	LPUART1_status_check(RS485_ERROR_BASE_LPUART);
 errors:
 	return status;
 }

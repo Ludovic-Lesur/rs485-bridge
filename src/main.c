@@ -68,7 +68,7 @@ static void DIM_init_hw(void) {
 	ADC_status_t adc1_status = ADC_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	NVM_status_t nvm_status = NVM_SUCCESS;
-	uint8_t node_address;
+	RS485_address_t node_address;
 #ifndef DEBUG
 	IWDG_status_t iwdg_status = IWDG_SUCCESS;
 #endif

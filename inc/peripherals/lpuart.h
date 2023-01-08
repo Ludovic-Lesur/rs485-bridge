@@ -26,7 +26,7 @@ typedef enum {
 
 /*** LPUART functions ***/
 
-LPUART_status_t LPUART1_init(uint8_t node_address);
+LPUART_status_t LPUART1_init(RS485_address_t node_address);
 LPUART_status_t LPUART1_set_mode(RS485_mode_t mode);
 void LPUART1_enable_rx(void);
 void LPUART1_disable_rx(void);

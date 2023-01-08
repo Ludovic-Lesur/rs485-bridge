@@ -34,8 +34,8 @@ typedef enum {
 /*** RS485 functions ***/
 void RS485_init(void);
 RS485_status_t RS485_set_mode(RS485_mode_t mode);
-RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size, uint8_t* number_of_nodes_found);
 RS485_status_t RS485_send_command(uint8_t slave_address, char_t* command);
+RS485_status_t RS485_scan_nodes(RS485_node_t* nodes_list, uint8_t node_list_size, uint8_t* number_of_nodes_found);
 void RS485_task(void);
 void RS485_fill_rx_buffer(uint8_t rx_byte);
 

@@ -27,7 +27,7 @@
 /*** LPUART local structures ***/
 
 typedef struct {
-	uint8_t node_address;
+	RS485_address_t node_address;
 	RS485_mode_t mode;
 } LPUART_context_t;
 
@@ -88,7 +88,7 @@ errors:
  * @param node_address:	RS485 7-bits address
  * @return status:		Function execution status.
  */
-LPUART_status_t LPUART1_init(uint8_t node_address) {
+LPUART_status_t LPUART1_init(RS485_address_t node_address) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
 	uint32_t brr = 0;
@@ -207,7 +207,7 @@ void LPUART1_disable_rx(void) {
  * @param command:			Command to send.
  * @return:					None.
  */
-LPUART_status_t LPUART1_send_command(uint8_t slave_address, char_t* command) {
+LPUART_status_t LPUART1_send_command(RS485_address_t slave_address, char_t* command) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
 	uint32_t loop_count = 0;

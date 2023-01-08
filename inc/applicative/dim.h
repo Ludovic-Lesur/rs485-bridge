@@ -15,6 +15,6 @@ typedef enum {
 	DIM_REGISTER_VRS_MV,
 	DIM_REGISTER_RS485_MODE,
 	DIM_REGISTER_LAST,
-} UHFM_register_address_t;
+} DIM_register_address_t;
 
 #endif /* __DIM_H__ */
