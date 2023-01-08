@@ -5,9 +5,8 @@
  *      Author: Ludo
  */
 
+// Peripherals.
 #include "adc.h"
-#include "at.h"
-#include "error.h"
 #include "exti.h"
 #include "gpio.h"
 #include "iwdg.h"
@@ -19,6 +18,9 @@
 #include "pwr.h"
 #include "rcc.h"
 #include "rtc.h"
+// Applicative.
+#include "at.h"
+#include "error.h"
 
 /*** MAIN local structures ***/
 
@@ -76,6 +78,7 @@ static void DIM_init_hw(void) {
 	ERROR_stack_init();
 	// Init memory.
 	NVIC_init();
+	NVM_init();
 	// Init GPIOs.
 	GPIO_init();
 	EXTI_init();

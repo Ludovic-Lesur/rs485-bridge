@@ -18,7 +18,6 @@
 #define RCC_LSE_FREQUENCY_HZ	32768
 #define RCC_MSI_FREQUENCY_KHZ	65
 #define RCC_HSI_FREQUENCY_KHZ	16000
-#define RCC_TCXO_FREQUENCY_KHZ	16000
 
 /*** RCC structures ***/
 
@@ -27,8 +26,6 @@ typedef enum {
 	RCC_ERROR_NULL_PARAMETER,
 	RCC_ERROR_HSI_READY,
 	RCC_ERROR_HSI_SWITCH,
-	RCC_ERROR_HSE_READY,
-	RCC_ERROR_HSE_SWITCH,
 	RCC_ERROR_LSI_READY,
 	RCC_ERROR_LSI_MEASUREMENT,
 	RCC_ERROR_LSE_READY,
@@ -42,7 +39,6 @@ typedef enum {
 
 void RCC_init(void);
 RCC_status_t RCC_switch_to_hsi(void);
-RCC_status_t RCC_switch_to_hse(void);
 uint32_t RCC_get_sysclk_khz(void);
 RCC_status_t RCC_enable_lsi(void);
 RCC_status_t RCC_get_lsi_frequency(uint32_t* lsi_frequency_hz);
