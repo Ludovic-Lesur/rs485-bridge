@@ -503,6 +503,7 @@ static void _AT_write_callback(void) {
 	// Local variables.
 	PARSER_status_t parser_status = PARSER_SUCCESS;
 	NVM_status_t nvm_status = NVM_SUCCESS;
+	RS485_status_t rs485_status = RS485_SUCCESS;
 	int32_t register_value = 0;
 	int32_t register_address = 0;
 	// Read address parameter.
@@ -534,6 +535,8 @@ static void _AT_write_callback(void) {
 		PARSER_error_check_print();
 		// Update mode.
 		at_ctx.rs485_mode = register_value;
+		rs485_status = RS485_set_mode(at_ctx.rs485_mode);
+		RS485_error_check_print();
 		break;
 	default:
 		_AT_print_error(ERROR_REGISTER_READ_ONLY);

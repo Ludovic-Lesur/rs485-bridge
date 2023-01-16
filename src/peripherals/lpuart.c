@@ -116,9 +116,8 @@ LPUART_status_t LPUART1_init(RS485_address_t node_address) {
 	// Put NRE pin in high impedance since it is directly connected to the DE pin.
 	GPIO_configure(&GPIO_LPUART1_NRE, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 #endif
-	// Configure peripheral in direct mode by default.
+	// Configure peripheral always in direct mode for reception.
 	LPUART1 -> CR1 |= 0x00000022;
-	LPUART1 -> CR2 |= ((lpuart_ctx.node_address & 0x7F) << 24) | (0b1 << 4);
 	LPUART1 -> CR3 |= 0x00B05000;
 	// Baud rate.
 	brr = (RCC_LSE_FREQUENCY_HZ * 256);
@@ -141,28 +140,13 @@ LPUART_status_t LPUART1_init(RS485_address_t node_address) {
 LPUART_status_t LPUART1_set_mode(RS485_mode_t mode) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
-	// Disable peripheral.
-	LPUART1 -> CR1 &= ~(0b1 << 0);
-	// Configure peripheral.
-	switch (mode) {
-	case RS485_MODE_DIRECT:
-		// Disable mute mode, address detection and wake-up on RXNE.
-		LPUART1 -> CR1 &= 0xFFFFD7FF; // MME='0' and WAKE='0'.
-		LPUART1 -> CR3 |= 0x00030000; // WUS='11'.
-		break;
-	case RS485_MODE_ADDRESSED:
-		// Enable mute mode, address detection and wake up on address match.
-		LPUART1 -> CR1 |= 0x00002800; // MME='1' and WAKE='1'.
-		LPUART1 -> CR3 &= 0xFFCFFFFF; // WUS='00'.
-		break;
-	default:
+	// Check parameter.
+	if (mode >= RS485_MODE_LAST) {
 		status = LPUART_ERROR_MODE;
 		goto errors;
 	}
 	// Update mode.
 	lpuart_ctx.mode = mode;
-	// Enable peripheral.
-	LPUART1 -> CR1 |= (0b1 << 0);
 errors:
 	return status;
 }
