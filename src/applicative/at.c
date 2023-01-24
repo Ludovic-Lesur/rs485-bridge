@@ -40,6 +40,8 @@
 // RS485 variables.
 #define AT_RS485_COMMAND_HEADER			"*"
 #define AT_RS485_NODES_LIST_SIZE		16
+// DINFox boards name.
+static const char_t* DINFOX_BOARD_ID_NAME[DINFOX_BOARD_ID_LAST] = {"LVRM", "BPSM", "DDRM", "UHFM", "GPSM", "SM", "DIM", "RRM", "DMM", "MPMCM"};
 
 /*** AT callbacks declaration ***/
 

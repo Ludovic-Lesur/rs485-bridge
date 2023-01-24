@@ -43,6 +43,7 @@ typedef struct {
 } RS485_reply_input_t;
 
 typedef struct {
+	char_t* raw;
 	int32_t value; // For value type.
 	uint8_t error_flag;
 } RS485_reply_output_t;
@@ -61,7 +62,7 @@ typedef struct {
 	uint8_t expected_slave_address;
 	// Response buffers.
 	RS485_reply_buffer_t reply[RS485_REPLY_BUFFER_DEPTH];
-	uint8_t reply_write_idx;
+	volatile uint8_t reply_write_idx;
 	uint8_t reply_read_idx;
 } RS485_context_t;
 
@@ -151,7 +152,6 @@ static RS485_status_t _RS485_wait_reply(RS485_reply_input_t* reply_in_ptr, RS485
 	RS485_status_t status = RS485_SUCCESS;
 	PARSER_status_t parser_status = PARSER_SUCCESS;
 	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
-	uint8_t idx = 0;
 	uint32_t reply_time_ms = 0;
 	uint32_t sequence_time_ms = 0;
 	uint8_t reply_count = 0;
@@ -163,6 +163,7 @@ static RS485_status_t _RS485_wait_reply(RS485_reply_input_t* reply_in_ptr, RS485
 	// Reset output data.
 	(reply_out_ptr -> value) = 0;
 	(reply_out_ptr -> error_flag) = 0;
+	(reply_out_ptr -> raw) = NULL;
 	// Main reception loop.
 	while (1) {
 		// Delay.
@@ -170,29 +171,29 @@ static RS485_status_t _RS485_wait_reply(RS485_reply_input_t* reply_in_ptr, RS485
 		LPTIM1_status_check(RS485_ERROR_BASE_LPTIM);
 		reply_time_ms += RS485_REPLY_PARSING_DELAY_MS;
 		sequence_time_ms += RS485_REPLY_PARSING_DELAY_MS;
-		// Loop on all replys.
-		for (idx=0 ; idx<RS485_REPLY_BUFFER_DEPTH ; idx++) {
+		// Check write index.
+		if (rs485_ctx.reply_write_idx != rs485_ctx.reply_read_idx) {
 			// Check line end flag.
-			if (rs485_ctx.reply[idx].line_end_flag != 0) {
+			if (rs485_ctx.reply[rs485_ctx.reply_read_idx].line_end_flag != 0) {
 				// Increment parsing count.
 				reply_count++;
 				// Reset time and flag.
 				reply_time_ms = 0;
-				rs485_ctx.reply[idx].line_end_flag = 0;
+				rs485_ctx.reply[rs485_ctx.reply_read_idx].line_end_flag = 0;
 				// Check mode.
 				if (rs485_ctx.mode == RS485_MODE_ADDRESSED) {
 					// Check source address.
-					if (rs485_ctx.reply[idx].buffer[RS485_FRAME_FIELD_INDEX_SOURCE_ADDRESS] != rs485_ctx.expected_slave_address) {
+					if (rs485_ctx.reply[rs485_ctx.reply_read_idx].buffer[RS485_FRAME_FIELD_INDEX_SOURCE_ADDRESS] != rs485_ctx.expected_slave_address) {
 						status = RS485_ERROR_SOURCE_ADDRESS_MISMATCH;
 						continue;
 					}
 					// Skip source address before parsing.
-					rs485_ctx.reply[idx].parser.buffer = (char_t*) &(rs485_ctx.reply[idx].buffer[RS485_FRAME_FIELD_INDEX_DATA]);
-					rs485_ctx.reply[idx].parser.buffer_size = (rs485_ctx.reply[idx].size > 0) ? (rs485_ctx.reply[idx].size - RS485_FRAME_FIELD_INDEX_DATA) : 0;
+					rs485_ctx.reply[rs485_ctx.reply_read_idx].parser.buffer = (char_t*) &(rs485_ctx.reply[rs485_ctx.reply_read_idx].buffer[RS485_FRAME_FIELD_INDEX_DATA]);
+					rs485_ctx.reply[rs485_ctx.reply_read_idx].parser.buffer_size = (rs485_ctx.reply[rs485_ctx.reply_read_idx].size > 0) ? (rs485_ctx.reply[rs485_ctx.reply_read_idx].size - RS485_FRAME_FIELD_INDEX_DATA) : 0;
 				}
 				else {
 					// Update buffer length.
-					rs485_ctx.reply[idx].parser.buffer_size = rs485_ctx.reply[idx].size;
+					rs485_ctx.reply[rs485_ctx.reply_read_idx].parser.buffer_size = rs485_ctx.reply[rs485_ctx.reply_read_idx].size;
 				}
 				// Parse reply.
 				switch (reply_in_ptr -> type) {
@@ -202,11 +203,11 @@ static RS485_status_t _RS485_wait_reply(RS485_reply_input_t* reply_in_ptr, RS485
 					break;
 				case RS485_REPLY_TYPE_OK:
 					// Compare to reference string.
-					parser_status = PARSER_compare(&rs485_ctx.reply[idx].parser, PARSER_MODE_COMMAND, RS485_REPLY_OK);
+					parser_status = PARSER_compare(&rs485_ctx.reply[rs485_ctx.reply_read_idx].parser, PARSER_MODE_COMMAND, RS485_REPLY_OK);
 					break;
 				case RS485_REPLY_TYPE_VALUE:
 					// Parse value.
-					parser_status = PARSER_get_parameter(&rs485_ctx.reply[idx].parser, (reply_in_ptr -> format), STRING_CHAR_NULL, &(reply_out_ptr -> value));
+					parser_status = PARSER_get_parameter(&rs485_ctx.reply[rs485_ctx.reply_read_idx].parser, (reply_in_ptr -> format), STRING_CHAR_NULL, &(reply_out_ptr -> value));
 					break;
 				default:
 					status = RS485_ERROR_REPLY_TYPE;
@@ -214,23 +215,28 @@ static RS485_status_t _RS485_wait_reply(RS485_reply_input_t* reply_in_ptr, RS485
 				}
 				// Check status.
 				if (parser_status == PARSER_SUCCESS) {
-					// Update status.
+					// Update raw pointer and status.
+					if (rs485_ctx.mode == RS485_MODE_ADDRESSED) {
+						(reply_out_ptr -> raw) = (char_t*) &(rs485_ctx.reply[rs485_ctx.reply_read_idx].buffer[RS485_FRAME_FIELD_INDEX_DATA]);
+					}
+					else {
+						(reply_out_ptr -> raw) = (char_t*) (rs485_ctx.reply[rs485_ctx.reply_read_idx].buffer);
+					}
+					// Exit.
 					status = RS485_SUCCESS;
-					// In raw mode, let the function run until one of the 2 timeouts is reached.
-					// In other modes, exit as soon as the value was successfully parsed.
-					if ((reply_in_ptr -> type) != RS485_REPLY_TYPE_RAW) goto errors; // Not an error but to exit loop.
+					break;
 				}
 				else {
 					status = (RS485_ERROR_BASE_PARSER + parser_status);
 				}
 				// Check error.
-				parser_status = PARSER_compare(&rs485_ctx.reply[idx].parser, PARSER_MODE_COMMAND, RS485_REPLY_ERROR);
+				parser_status = PARSER_compare(&rs485_ctx.reply[rs485_ctx.reply_read_idx].parser, PARSER_MODE_COMMAND, RS485_REPLY_ERROR);
 				if (parser_status == PARSER_SUCCESS) {
 					// Update output data.
 					(reply_out_ptr -> error_flag) = 1;
 					// Exit.
 					status = RS485_SUCCESS;
-					goto errors;
+					break;
 				}
 			}
 		}
@@ -239,8 +245,9 @@ static RS485_status_t _RS485_wait_reply(RS485_reply_input_t* reply_in_ptr, RS485
 			// Set status to timeout if none reply has been received, otherwise the parser error code is returned.
 			if (reply_count == 0) {
 				status = RS485_ERROR_REPLY_TIMEOUT;
+				goto errors;
 			}
-			goto errors;
+			break;
 		}
 		if (sequence_time_ms > RS485_SEQUENCE_TIMEOUT_MS) {
 			// Set status to timeout in any case.

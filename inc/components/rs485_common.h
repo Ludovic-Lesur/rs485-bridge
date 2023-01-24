@@ -36,7 +36,7 @@ typedef enum {
 } RS485_frame_field_index_t;
 
 typedef struct {
-	uint8_t address;
+	RS485_address_t address;
 	uint8_t board_id;
 } RS485_node_t;
 
