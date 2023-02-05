@@ -72,19 +72,6 @@ static RS485_context_t rs485_ctx;
 
 /*** RS485 local functions ***/
 
-/* SPECIFIC MACRO USED IN RS485 SEND COMMAND FUNCTION.
- * @param character:	Character to add.
- * @return:				None.
- */
-#define _RS485_add_char_to_reply(character) { \
-	if (global_idx >= reply_size_bytes) { \
-		status = RS485_ERROR_BUFFER_OVERFLOW; \
-		goto errors; \
-	} \
-	reply[global_idx] = character; \
-	global_idx++; \
-}
-
 /* BUILD RS485 COMMAND.
  * @param command:	Raw command to send.
  * @return:			Function execution status.
