@@ -12,10 +12,10 @@
 
 /*** MATH macros ***/
 
-#define MATH_BINARY_MAX_SIZE		32
-#define MATH_DECIMAL_MAX_SIZE		10
-#define MATH_HEXADECIMAL_MAX_SIZE	4
-#define MATH_BYTE_MAX				0xFF
+#define MATH_BINARY_MAX_LENGTH			32
+#define MATH_DECIMAL_MAX_LENGTH			10
+#define MATH_HEXADECIMAL_MAX_LENGTH		4
+#define MATH_BYTE_MAX					0xFF
 
 /*** MATH structures ***/
 

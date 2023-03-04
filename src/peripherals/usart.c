@@ -7,7 +7,7 @@
 
 #include "usart.h"
 
-#include "at.h"
+#include "at_usb.h"
 #include "gpio.h"
 #include "lptim.h"
 #include "mapping.h"
@@ -33,7 +33,7 @@ void __attribute__((optimize("-O0"))) USART2_IRQHandler(void) {
 	// RXNE interrupt.
 	if (((USART2 -> ISR) & (0b1 << 5)) != 0) {
 		// Transmit incoming byte to AT command manager.
-		AT_fill_rx_buffer(USART2 -> RDR);
+		AT_USB_fill_rx_buffer(USART2 -> RDR);
 		// Clear RXNE flag.
 		USART2 -> RQR |= (0b1 << 3);
 	}

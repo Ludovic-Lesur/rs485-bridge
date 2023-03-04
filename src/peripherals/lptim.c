@@ -43,6 +43,7 @@ void __attribute__((optimize("-O0"))) LPTIM1_IRQHandler(void) {
 		// Clear flag.
 		LPTIM1 -> ICR |= (0b1 << 1);
 	}
+	EXTI_clear_flag(EXTI_LINE_LPTIM1);
 }
 
 /* WRITE ARR REGISTER.
@@ -83,14 +84,13 @@ errors:
 /*** LPTIM functions ***/
 
 /* INIT LPTIM FOR DELAY OPERATION.
- * @param lsi_freq_hz:	Effective LSI oscillator frequency.
- * @return:				None.
+ * @param:	None.
+ * @return:	None.
  */
-void LPTIM1_init(uint32_t lsi_freq_hz) {
+void LPTIM1_init(void) {
 	// Configure clock source.
-	RCC -> CCIPR &= ~(0b11 << 18); // Reset bits 18-19.
-	RCC -> CCIPR |= (0b01 << 18); // LPTIMSEL='01' (LSI clock selected).
-	lptim_clock_frequency_hz = (lsi_freq_hz >> 5);
+	RCC -> CCIPR |= (0b11 << 18); // LPTIMSEL='01' (LSE clock selected).
+	lptim_clock_frequency_hz = (RCC_LSE_FREQUENCY_HZ >> 5);
 	// Enable peripheral clock.
 	RCC -> APB1ENR |= (0b1 << 31); // LPTIM1EN='1'.
 	// Configure peripheral.
@@ -104,10 +104,10 @@ void LPTIM1_init(uint32_t lsi_freq_hz) {
 
 /* DELAY FUNCTION.
  * @param delay_ms:		Number of milliseconds to wait.
- * @param stop_mode:	Enter stop mode during delay if non zero, block without interrupt otherwise.
+ * @param delay_mode:	Delay waiting mode.
  * @return status:		Function execution status.
  */
-LPTIM_status_t LPTIM1_delay_milliseconds(uint32_t delay_ms, uint8_t stop_mode) {
+LPTIM_status_t LPTIM1_delay_milliseconds(uint32_t delay_ms, LPTIM_delay_mode_t delay_mode) {
 	// Local variables.
 	LPTIM_status_t status = LPTIM_SUCCESS;
 	uint32_t arr = 0;
@@ -130,7 +130,16 @@ LPTIM_status_t LPTIM1_delay_milliseconds(uint32_t delay_ms, uint8_t stop_mode) {
 	status = _LPTIM1_write_arr(arr);
 	if (status != LPTIM_SUCCESS) goto errors;
 	// Perform delay with the selected mode.
-	if (stop_mode != 0) {
+	switch (delay_mode) {
+	case LPTIM_DELAY_MODE_ACTIVE:
+		// Start timer.
+		LPTIM1 -> CR |= (0b1 << 1); // SNGSTRT='1'.
+		// Wait for flag.
+		while (((LPTIM1 -> ISR) & (0b1 << 1)) == 0);
+		// Clear flag.
+		LPTIM1 -> ICR |= (0b1 << 1);
+		break;
+	case LPTIM_DELAY_MODE_STOP:
 		// Enable interrupt.
 		NVIC_enable_interrupt(NVIC_INTERRUPT_LPTIM1);
 		lptim_wake_up = 0;
@@ -141,14 +150,10 @@ LPTIM_status_t LPTIM1_delay_milliseconds(uint32_t delay_ms, uint8_t stop_mode) {
 			PWR_enter_stop_mode();
 		}
 		NVIC_disable_interrupt(NVIC_INTERRUPT_LPTIM1);
-	}
-	else {
-		// Start timer.
-		LPTIM1 -> CR |= (0b1 << 1); // SNGSTRT='1'.
-		// Wait for flag.
-		while (((LPTIM1 -> ISR) & (0b1 << 1)) == 0);
-		// Clear flag.
-		LPTIM1 -> ICR |= (0b1 << 1);
+		break;
+	default:
+		status = LPTIM_ERROR_DELAY_MODE;
+		break;
 	}
 errors:
 	// Disable timer.

@@ -31,8 +31,7 @@ typedef enum {
 /*** RTC functions ***/
 
 void RTC_reset(void);
-RTC_status_t __attribute__((optimize("-O0"))) RTC_init(uint8_t* rtc_use_lse, uint32_t lsi_freq_hz);
-
+RTC_status_t __attribute__((optimize("-O0"))) RTC_init(void);
 RTC_status_t RTC_start_wakeup_timer(uint32_t delay_seconds);
 RTC_status_t RTC_stop_wakeup_timer(void);
 volatile uint8_t RTC_get_wakeup_timer_flag(void);

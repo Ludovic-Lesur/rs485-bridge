@@ -1,7 +1,7 @@
 /*
  * string.h
  *
- *  Created on: 25 oct. 2022
+ *  Created on: 05 dec. 2021
  *      Author: Ludo
  */
 
@@ -19,6 +19,7 @@
 #define STRING_CHAR_LF		'\n'
 #define STRING_CHAR_MINUS	'-'
 #define STRING_CHAR_DOT		'.'
+#define STRING_CHAR_SPACE	' '
 
 /*** STRING structures ***/
 
@@ -33,6 +34,10 @@ typedef enum {
 	STRING_ERROR_HEXADECIMAL_OVERFLOW,
 	STRING_ERROR_DECIMAL_INVALID,
 	STRING_ERROR_DECIMAL_OVERFLOW,
+	STRING_ERROR_SIZE_OVERFLOW,
+	STRING_ERROR_COPY_OVERFLOW,
+	STRING_ERROR_APPEND_OVERFLOW,
+	STRING_ERROR_TEXT_JUSTIFICATION,
 	STRING_ERROR_BASE_MATH = 0x0100,
 	STRING_ERROR_BASE_LAST = (STRING_ERROR_BASE_MATH + MATH_ERROR_BASE_LAST)
 } STRING_status_t;
@@ -44,6 +49,22 @@ typedef enum {
 	STRING_FORMAT_LAST
 } STRING_format_t;
 
+typedef enum {
+	STRING_JUSTIFICATION_LEFT = 0,
+	STRING_JUSTIFICATION_CENTER,
+	STRING_JUSTIFICATION_RIGHT,
+	STRING_JUSTIFICATION_LAST
+} STRING_justification_t;
+
+typedef struct {
+	char_t* source;
+	char_t* destination;
+	uint8_t destination_size;
+	STRING_justification_t justification;
+	uint8_t flush_flag;
+	char_t flush_char;
+} STRING_copy_t;
+
 /*** STRING functions ***/
 
 STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, uint8_t print_prefix, char_t* str);
@@ -51,6 +72,12 @@ STRING_status_t STRING_byte_array_to_hexadecimal_string(uint8_t* data, uint8_t d
 
 STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint8_t number_of_digits, int32_t* value);
 STRING_status_t STRING_hexadecimal_string_to_byte_array(char_t* str, char_t end_char, uint8_t* data, uint8_t* extracted_length);
+
+STRING_status_t STRING_get_size(char_t* str, uint8_t* size);
+STRING_status_t STRING_copy(STRING_copy_t* copy);
+
+STRING_status_t STRING_append_string(char_t* buffer, uint8_t buffer_size_max, char_t* str, uint8_t* buffer_size);
+STRING_status_t STRING_append_value(char_t* buffer, uint8_t buffer_size_max, int32_t value, STRING_format_t format, uint8_t print_prefix, uint8_t* buffer_size);
 
 #define STRING_status_check(error_base) { if (string_status != STRING_SUCCESS) { status = error_base + string_status; goto errors; }}
 #define STRING_error_check() { ERROR_status_check(string_status, STRING_SUCCESS, ERROR_BASE_STRING); }

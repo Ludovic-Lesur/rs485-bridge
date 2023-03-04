@@ -24,8 +24,8 @@
 #include "parser.h"
 #include "string.h"
 #include "types.h"
-// Components.
-#include "rs485.h"
+// Nodes.
+#include "node.h"
 
 /*** ERROR structures ***/
 
@@ -51,10 +51,10 @@ typedef enum {
 	ERROR_BASE_MATH = (ERROR_BASE_USART + USART_ERROR_BASE_LAST),
 	ERROR_BASE_PARSER = (ERROR_BASE_MATH + MATH_ERROR_BASE_LAST),
 	ERROR_BASE_STRING = (ERROR_BASE_PARSER + PARSER_ERROR_BASE_LAST),
-	// Components.
-	ERROR_BASE_RS485 = (ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
+	// Nodes.
+	ERROR_BASE_NODE = (ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
 	// Last index.
-	ERROR_BASE_LAST = (ERROR_BASE_RS485 + RS485_ERROR_BASE_LAST)
+	ERROR_BASE_LAST = (ERROR_BASE_NODE + NODE_ERROR_BASE_LAST)
 } ERROR_t;
 
 /*** ERROR functions ***/
@@ -72,7 +72,7 @@ uint8_t ERROR_stack_is_empty(void);
 
 #define ERROR_status_check_print(status, success, error_base) { \
 	if (status != success) { \
-		_AT_print_error(error_base + status); \
+		_AT_USB_print_error(error_base + status); \
 		goto errors; \
 	} \
 }

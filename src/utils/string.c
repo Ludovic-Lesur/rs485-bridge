@@ -1,7 +1,7 @@
 /*
  * string.c
  *
- *  Created on: 25 oct. 2022
+ *  Created on: 05 dec. 2021
  *      Author: Ludo
  */
 
@@ -12,10 +12,13 @@
 
 /*** STRING local macros ***/
 
-#define STRING_DIGIT_BOOLEAN_SIZE			1
+#define STRING_DIGIT_BOOLEAN_LENGTH			1
 #define STRING_DIGIT_DECIMAL_MAX			9
 #define STRING_DIGIT_HEXADECIMAL_MAX		0x0F
-#define STRING_HEXADECICMAL_DIGIT_PER_BYTE	2
+#define STRING_HEXADECIMAL_DIGIT_PER_BYTE	2
+
+#define STRING_VALUE_BUFFER_SIZE			16
+#define STRING_SIZE_MAX						100
 
 /*** STRING local functions ***/
 
@@ -171,7 +174,7 @@ STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, ui
             str[str_idx++] = 'b';
 		}
 
-		for (idx=(MATH_BINARY_MAX_SIZE - 1) ; idx>=0 ; idx--) {
+		for (idx=(MATH_BINARY_MAX_LENGTH - 1) ; idx>=0 ; idx--) {
 			if (abs_value & (0b1 << idx)) {
 				str[str_idx++] = '1';
 				first_non_zero_found = 1;
@@ -190,7 +193,7 @@ STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, ui
 			str[str_idx++] = '0';
 			str[str_idx++] = 'x';
 		}
-		for (idx=(MATH_HEXADECIMAL_MAX_SIZE - 1) ; idx>=0 ; idx--) {
+		for (idx=(MATH_HEXADECIMAL_MAX_LENGTH - 1) ; idx>=0 ; idx--) {
 			generic_byte = (abs_value >> (8 * idx)) & 0xFF;
 			if (generic_byte != 0) {
 				first_non_zero_found = 1;
@@ -211,7 +214,7 @@ STRING_status_t STRING_value_to_string(int32_t value, STRING_format_t format, ui
 			str[str_idx++] = '0';
 			str[str_idx++] = 'd';
 		}
-		for (idx=(MATH_DECIMAL_MAX_SIZE - 1) ; idx>=0 ; idx--) {
+		for (idx=(MATH_DECIMAL_MAX_LENGTH - 1) ; idx>=0 ; idx--) {
 			math_status = MATH_pow_10(idx, &current_power);
 			MATH_status_check(STRING_ERROR_BASE_MATH);
 			generic_byte = (abs_value - previous_decade) / current_power;
@@ -289,7 +292,7 @@ STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint
 	switch (format) {
 	case STRING_FORMAT_BOOLEAN:
 		// Check if there is only 1 digit (start and end index are equal).
-		if (number_of_digits != STRING_DIGIT_BOOLEAN_SIZE) {
+		if (number_of_digits != STRING_DIGIT_BOOLEAN_LENGTH) {
 			status = STRING_ERROR_BOOLEAN_SIZE;
 			goto errors;
 		}
@@ -313,7 +316,7 @@ STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint
 			goto errors;
 		}
 		// Check if parameter can be binary coded on 32 bits = 4 bytes.
-		if (number_of_digits > (STRING_HEXADECICMAL_DIGIT_PER_BYTE * MATH_HEXADECIMAL_MAX_SIZE)) {
+		if (number_of_digits > (STRING_HEXADECIMAL_DIGIT_PER_BYTE * MATH_HEXADECIMAL_MAX_LENGTH)) {
 			// Error in parameter -> value is too large.
 			status = STRING_ERROR_HEXADECIMAL_OVERFLOW;
 			goto errors;
@@ -329,7 +332,7 @@ STRING_status_t STRING_string_to_value(char_t* str, STRING_format_t format, uint
 		break;
 	case STRING_FORMAT_DECIMAL:
 		// Check if parameter can be binary coded on 32 bits.
-		if (number_of_digits > MATH_DECIMAL_MAX_SIZE) {
+		if (number_of_digits > MATH_DECIMAL_MAX_LENGTH) {
 			// Error in parameter -> value is too large.
 			status = STRING_ERROR_DECIMAL_OVERFLOW;
 			goto errors;
@@ -401,6 +404,134 @@ STRING_status_t STRING_hexadecimal_string_to_byte_array(char_t* str, char_t end_
 		}
 		char_idx++;
 	}
+errors:
+	return status;
+}
+
+/* COMPUTE THE LENGTH OF A NULL TERMINATED STRING.
+ * @param str:	String to analyze.
+ * @param size:	Pointer to byte that will contain string size.
+ */
+STRING_status_t STRING_get_size(char_t* str, uint8_t* size) {
+	// Local variables.
+	STRING_status_t status = STRING_SUCCESS;
+	// Check parameters.
+	_STRING_check_pointer(str);
+	_STRING_check_pointer(size);
+	// Reset result.
+	(*size) = 0;
+	// Compute source buffer size.
+	while (str[(*size)] != STRING_CHAR_NULL) {
+		(*size)++;
+		// Check overflow.
+		if ((*size) > STRING_SIZE_MAX) {
+			status = STRING_ERROR_SIZE_OVERFLOW;
+			goto errors;
+		}
+	}
+errors:
+	return status;
+}
+
+/* COPY A SUBSTRING INTO ANOTHER WITH SPECIFIED JUSTIFICATION.
+ * @param copy:		Copy parameters.
+ * @return status:	Function execution status.
+ */
+STRING_status_t STRING_copy(STRING_copy_t* copy) {
+	// Local variables.
+	STRING_status_t status = STRING_SUCCESS;
+	uint8_t idx = 0;
+	uint8_t source_size = 0;
+	uint8_t start_idx = 0;
+	uint8_t destination_idx = 0;
+	// Reset destination buffer if required.
+	if ((copy -> flush_flag) != 0) {
+		for (idx=0 ; idx<(copy -> destination_size) ; idx++) (copy -> destination)[idx] = (copy -> flush_char);
+	}
+	// Compute source buffer size.
+	status = STRING_get_size((copy -> source), &source_size);
+	if (status != STRING_SUCCESS) goto errors;
+	// Check size.
+	if (source_size > (copy -> destination_size)) {
+		status = STRING_ERROR_COPY_OVERFLOW;
+		goto errors;
+	}
+	// Compute column according to justification.
+	switch (copy -> justification) {
+	case STRING_JUSTIFICATION_LEFT:
+		start_idx = 0;
+		break;
+	case STRING_JUSTIFICATION_CENTER:
+		start_idx = ((copy -> destination_size) - source_size) / (2);
+		break;
+	case STRING_JUSTIFICATION_RIGHT:
+		start_idx = ((copy -> destination_size) - source_size);
+		break;
+	default:
+		status = STRING_ERROR_TEXT_JUSTIFICATION;
+		goto errors;
+	}
+	// Char loop.
+	idx = 0;
+	while ((copy -> source)[idx] != STRING_CHAR_NULL) {
+		// Check index.
+		if (destination_idx >= ((copy -> destination_size) - 1)) {
+			status = STRING_ERROR_COPY_OVERFLOW;
+			goto errors;
+		}
+		(copy -> destination)[start_idx + idx] = (copy -> source)[idx];
+		idx++;
+	}
+errors:
+	return status;
+}
+
+/* APPEND A STRING TO A STRING.
+ * @param buffer:			Destination buffer.
+ * @param buffer_size_max:	Size of the destination buffer.
+ * @param str:				String to append.
+ * @param buffer_size:		Pointer that will contain new buffer size after append.
+ * @return status:			Function execution status.
+ */
+STRING_status_t STRING_append_string(char_t* buffer, uint8_t buffer_size_max, char_t* str, uint8_t* buffer_size) {
+	// Local variables.
+	STRING_status_t status = STRING_SUCCESS;
+	uint8_t idx = 0;
+	// Fill buffer.
+	while (str[idx] != STRING_CHAR_NULL) {
+		// Check index.
+		if ((*buffer_size) >= buffer_size_max) {
+			status = STRING_ERROR_APPEND_OVERFLOW;
+			goto errors;
+		}
+		buffer[(*buffer_size)] = str[idx];
+		// Increment size and index..
+		(*buffer_size)++;
+		idx++;
+	}
+errors:
+	return status;
+}
+
+/* APPEND A VALUE TO A STRING.
+ * @param buffer:		Destination buffer.
+ * @param value:		Value to convert and append.
+ * @param format:		Output string format.
+ * @param print_prefix:	Print base prefix if non-zero.
+ * @return status:		Function execution status.
+ */
+STRING_status_t STRING_append_value(char_t* buffer, uint8_t buffer_size_max, int32_t value, STRING_format_t format, uint8_t print_prefix, uint8_t* buffer_size) {
+	// Local variables.
+	STRING_status_t status = STRING_SUCCESS;
+	char_t str_value[STRING_VALUE_BUFFER_SIZE];
+	uint8_t idx = 0;
+	// Reset string.
+	for (idx=0 ; idx<STRING_VALUE_BUFFER_SIZE ; idx++) str_value[idx] = STRING_CHAR_NULL;
+	// Convert value to string.
+	status = STRING_value_to_string(value, format, print_prefix, str_value);
+	if (status != STRING_SUCCESS) goto errors;
+	// Add string.
+	status = STRING_append_string(buffer, buffer_size_max, str_value, buffer_size);
 errors:
 	return status;
 }

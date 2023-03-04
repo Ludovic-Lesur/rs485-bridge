@@ -8,7 +8,6 @@
 #include "rtc.h"
 
 #include "exti.h"
-#include "exti_reg.h"
 #include "nvic.h"
 #include "rcc_reg.h"
 #include "rtc_reg.h"
@@ -38,7 +37,7 @@ void __attribute__((optimize("-O0"))) RTC_IRQHandler(void) {
 		}
 		// Clear flags.
 		RTC -> ISR &= ~(0b1 << 10); // WUTF='0'.
-		EXTI -> PR |= (0b1 << EXTI_LINE_RTC_WAKEUP_TIMER);
+		EXTI_clear_flag(EXTI_LINE_RTC_WAKEUP_TIMER);
 	}
 }
 
@@ -90,25 +89,14 @@ void __attribute__((optimize("-O0"))) RTC_reset(void) {
 }
 
 /* INIT HARDWARE RTC PERIPHERAL.
- * @param rtc_use_lse:	RTC will be clocked on LSI if 0, on LSE otherwise.
- * @param lsi_freq_hz:	Effective LSI oscillator frequency used to compute the accurate prescaler value (only if LSI is used as source).
- * @return status:		Function execution status.
+ * @param:			None.
+ * @return status:	Function execution status.
  */
-RTC_status_t __attribute__((optimize("-O0"))) RTC_init(uint8_t* rtc_use_lse, uint32_t lsi_freq_hz) {
+RTC_status_t __attribute__((optimize("-O0"))) RTC_init(void) {
 	// Local variables.
 	RTC_status_t status = RTC_SUCCESS;
-	// Check parameters.
-	if (rtc_use_lse == NULL) {
-		status = RTC_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	// Manage RTC clock source.
-	if ((*rtc_use_lse) != 0) {
-		RCC -> CSR |= (0b01 << 16); // RTCSEL='01' (LSE).
-	}
-	else {
-		RCC -> CSR |= (0b10 << 16); // RTCSEL='10' (LSI).
-	}
+	// Use LSE.
+	RCC -> CSR |= (0b01 << 16); // RTCSEL='01'.
 	// Enable RTC and register access.
 	RCC -> CSR |= (0b1 << 18); // RTCEN='1'.
 	// Switch to LSI if RTC failed to enter initialization mode.
@@ -119,21 +107,10 @@ RTC_status_t __attribute__((optimize("-O0"))) RTC_init(uint8_t* rtc_use_lse, uin
 		RCC -> CSR |= (0b10 << 16); // RTCSEL='10'.
 		RCC -> CSR |= (0b1 << 18); // RTCEN='1'.
 		status = _RTC_enter_initialization_mode();
-		if (status != RTC_SUCCESS) {
-			// Update flag.
-			(*rtc_use_lse) = 0;
-			goto errors;
-		}
+		if (status != RTC_SUCCESS) goto errors;
 	}
-	// Configure prescaler.
-	if ((*rtc_use_lse) != 0) {
-		// LSE frequency is 32.768kHz typical.
-		RTC -> PRER = (127 << 16) | (255 << 0); // PREDIV_A=127 and PREDIV_S=255 (128*256 = 32768).
-	}
-	else {
-		// Compute prescaler according to measured LSI frequency.
-		RTC -> PRER = (127 << 16) | (((lsi_freq_hz / 128) - 1) << 0); // PREDIV_A=127 and PREDIV_S=((lsi_freq_hz/128)-1).
-	}
+	// Compute prescaler for 32.768kHz quartz.
+	RTC -> PRER = (127 << 16) | (255 << 0);
 	// Force registers reset.
 	RTC -> CR = 0;
 	RTC -> ALRMAR = 0;
@@ -148,7 +125,7 @@ RTC_status_t __attribute__((optimize("-O0"))) RTC_init(uint8_t* rtc_use_lse, uin
 	// Disable interrupt and clear all flags.
 	RTC -> CR &= ~(0b1 << 14);
 	RTC -> ISR &= 0xFFFE0000;
-	EXTI -> PR |= (0b1 << EXTI_LINE_RTC_WAKEUP_TIMER);
+	EXTI_clear_flag(EXTI_LINE_RTC_WAKEUP_TIMER);
 	// Set interrupt priority.
 	NVIC_set_priority(NVIC_INTERRUPT_RTC, 2);
 	NVIC_enable_interrupt(NVIC_INTERRUPT_RTC);
@@ -235,6 +212,6 @@ volatile uint8_t RTC_get_wakeup_timer_flag(void) {
 void RTC_clear_wakeup_timer_flag(void) {
 	// Clear flag.
 	RTC -> ISR &= ~(0b1 << 10); // WUTF='0'.
-	EXTI -> PR |= (0b1 << EXTI_LINE_RTC_WAKEUP_TIMER);
+	EXTI_clear_flag(EXTI_LINE_RTC_WAKEUP_TIMER);
 	rtc_wakeup_timer_flag = 0;
 }

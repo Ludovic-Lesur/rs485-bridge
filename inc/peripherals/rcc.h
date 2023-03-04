@@ -40,9 +40,8 @@ typedef enum {
 void RCC_init(void);
 RCC_status_t RCC_switch_to_hsi(void);
 uint32_t RCC_get_sysclk_khz(void);
-RCC_status_t RCC_enable_lsi(void);
-RCC_status_t RCC_get_lsi_frequency(uint32_t* lsi_frequency_hz);
-RCC_status_t RCC_enable_lse(void);
+void RCC_enable_lsi(void);
+void RCC_enable_lse(void);
 
 #define RCC_status_check(error_base) { if (rcc_status != RCC_SUCCESS) { status = error_base + rcc_status; goto errors; }}
 #define RCC_error_check() { ERROR_status_check(rcc_status, RCC_SUCCESS, ERROR_BASE_RCC); }
