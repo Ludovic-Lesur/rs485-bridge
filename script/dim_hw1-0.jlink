@@ -1,0 +1,6 @@
+r
+loadfile hw1-0/dim.hex
+verifyfile hw1-0/dim.hex
+r
+g
+qc

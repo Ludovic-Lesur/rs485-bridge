@@ -1,6 +1,0 @@
-r
-loadfile HW1_1/DIM.hex
-verifyfile HW1_1/DIM.hex
-r
-g
-qc

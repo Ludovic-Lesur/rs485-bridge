@@ -2,13 +2,13 @@
 <launchConfiguration type="org.eclipse.cdt.launch.applicationLaunchType">
     <intAttribute key="org.eclipse.cdt.launch.ATTR_BUILD_BEFORE_LAUNCH_ATTR" value="2"/>
     <stringAttribute key="org.eclipse.cdt.launch.COREFILE_PATH" value=""/>
-    <stringAttribute key="org.eclipse.cdt.launch.PROGRAM_ARGUMENTS" value="-speed 4000&#10;-device STM32L031F4&#10;-If SWD&#10;script/HW1_1.jlink"/>
+    <stringAttribute key="org.eclipse.cdt.launch.PROGRAM_ARGUMENTS" value="-speed 4000&#10;-device STM32L031F4&#10;-If SWD&#10;script/dim_hw1-1.jlink"/>
     <stringAttribute key="org.eclipse.cdt.launch.PROGRAM_NAME" value="${eclipse_home}opt/Jlink/JLinkExe"/>
-    <stringAttribute key="org.eclipse.cdt.launch.PROJECT_ATTR" value="DIM"/>
+    <stringAttribute key="org.eclipse.cdt.launch.PROJECT_ATTR" value="dim"/>
     <booleanAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_AUTO_ATTR" value="false"/>
     <stringAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_ID_ATTR" value="ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.1917670872.652247491"/>
     <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
-        <listEntry value="/DIM"/>
+        <listEntry value="/dim"/>
     </listAttribute>
     <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
         <listEntry value="4"/>
