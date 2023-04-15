@@ -24,7 +24,7 @@
 
 #define AT_BUS_FRAME_END				STRING_CHAR_CR
 
-#define AT_BUS_BUFFER_SIZE_BYTES		64
+#define AT_BUS_BUFFER_SIZE_BYTES		128
 #define AT_BUS_REPLY_BUFFER_DEPTH		16
 
 #define AT_BUS_REPLY_PARSING_DELAY_MS	50
@@ -415,12 +415,17 @@ NODE_status_t AT_BUS_task(void) {
 	NODE_address_t source_address = 0;
 	NODE_address_t destination_address = 0;
 	STRING_status_t string_status = STRING_SUCCESS;
-	char_t at_bus_frame[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
+	char_t at_bus_frame[AT_BUS_BUFFER_SIZE_BYTES];
 	uint8_t at_bus_frame_size = 0;
-	// Check line end flag on current reply.
-	while (at_bus_ctx.reply[at_bus_ctx.reply_read_idx].line_end_flag != 0) {
-		// Check length.
-		if (at_bus_ctx.reply[at_bus_ctx.reply_read_idx].size >= LBUS_FRAME_FIELD_INDEX_DATA) {
+	// Check write index.
+	while (at_bus_ctx.reply_read_idx != at_bus_ctx.reply_write_idx) {
+		// Flush local frame.
+		for (at_bus_frame_size=0 ; at_bus_frame_size<AT_BUS_BUFFER_SIZE_BYTES ; at_bus_frame_size++) {
+			at_bus_frame[at_bus_frame_size] = STRING_CHAR_NULL;
+		}
+		at_bus_frame_size = 0;
+		// Check line end flag and length.
+		if ((at_bus_ctx.reply[at_bus_ctx.reply_read_idx].line_end_flag != 0) && (at_bus_ctx.reply[at_bus_ctx.reply_read_idx].size >= LBUS_FRAME_FIELD_INDEX_DATA)) {
 			// Read addresses.
 			source_address = ((uint8_t) ((at_bus_ctx.reply[at_bus_ctx.reply_read_idx]).buffer[LBUS_FRAME_FIELD_INDEX_SOURCE_ADDRESS])) & LBUS_ADDRESS_MASK;
 			destination_address = ((uint8_t) ((at_bus_ctx.reply[at_bus_ctx.reply_read_idx]).buffer[LBUS_FRAME_FIELD_INDEX_DESTINATION_ADDRESS])) & LBUS_ADDRESS_MASK;
