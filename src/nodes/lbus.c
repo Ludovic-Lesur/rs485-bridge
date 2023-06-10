@@ -8,7 +8,7 @@
 #include "lbus.h"
 
 #include "at_bus.h"
-#include "dinfox.h"
+#include "dinfox_types.h"
 #include "lpuart.h"
 #include "node.h"
 #include "types.h"
@@ -40,7 +40,7 @@ static LBUS_context_t lbus_ctx;
  */
 void LBUS_init(void) {
 	// Init context.
-	lbus_ctx.self_address = DINFOX_NODE_ADDRESS_DMM;
+	lbus_ctx.self_address = DINFOX_NODE_ADDRESS_DIM;
 	lbus_ctx.expected_slave_address = DINFOX_NODE_ADDRESS_BROADCAST;
 	lbus_ctx.source_address_mismatch = 0;
 	lbus_ctx.rx_byte_count = 0;

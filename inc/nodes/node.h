@@ -8,6 +8,7 @@
 #ifndef __NODE_H__
 #define __NODE_H__
 
+#include "dinfox_types.h"
 #include "lptim.h"
 #include "lpuart.h"
 #include "string.h"
@@ -45,8 +46,6 @@ typedef enum {
 	NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
 	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST)
 } NODE_status_t;
-
-typedef uint8_t	NODE_address_t;
 
 typedef enum {
 	NODE_PROTOCOL_AT_BUS = 0,

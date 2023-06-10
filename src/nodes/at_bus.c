@@ -8,7 +8,8 @@
 #include "at_bus.h"
 
 #include "at_usb.h"
-#include "dinfox.h"
+#include "dinfox_reg.h"
+#include "dinfox_types.h"
 #include "gpio.h"
 #include "iwdg.h"
 #include "lbus.h"
@@ -30,7 +31,6 @@
 #define AT_BUS_REPLY_PARSING_DELAY_MS	50
 #define AT_BUS_SEQUENCE_TIMEOUT_MS		120000
 
-#define AT_BUS_COMMAND_PING				"AT"
 #define AT_BUS_COMMAND_WRITE_REGISTER	"AT$W="
 #define AT_BUS_COMMAND_READ_REGISTER	"AT$R="
 #define AT_BUS_COMMAND_SEPARATOR		","
@@ -221,38 +221,6 @@ errors:
 	return status;
 }
 
-/* PING AT NODE.
- * @param node_address:	AT address to ping.
- * @param ping_status:	Pointer to the ping operation status.
- * @return status:		Function execution status.
- */
-NODE_status_t _AT_BUS_ping(NODE_address_t node_address, NODE_access_status_t* ping_status) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
-	STRING_status_t string_status = STRING_SUCCESS;
-	NODE_command_parameters_t command_params;
-	NODE_reply_parameters_t reply_params;
-	NODE_read_data_t unused_read_data;
-	char_t command[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
-	uint8_t command_size = 0;
-	// Build command structure.
-	command_params.node_address = node_address;
-	command_params.command = (char_t*) command;
-	// Build reply structure.
-	reply_params.type = NODE_REPLY_TYPE_OK;
-	reply_params.format = STRING_FORMAT_BOOLEAN;
-	reply_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
-	reply_params.byte_array_size = 0;
-	reply_params.exact_length = 1;
-	// Build read command.
-	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_PING, &command_size);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
-	// Send ping command.
-	status = AT_BUS_send_command(&command_params, &reply_params, &unused_read_data, ping_status);
-errors:
-	return status;
-}
-
 /* READ AT NODE REGISTER.
  * @param read_params:	Pointer to the read operation parameters.
  * @param read_data:	Pointer to the read result.
@@ -347,7 +315,6 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	NODE_read_data_t read_data;
 	NODE_access_status_t read_status;
 	NODE_address_t node_address = 0;
-	uint8_t node_list_idx = 0;
 	// Check parameters.
 	if ((nodes_list == NULL) || (nodes_count == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -358,7 +325,7 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	// Build read input common parameters.
 	read_params.format = STRING_FORMAT_HEXADECIMAL;
 	read_params.timeout_ms = AT_BUS_DEFAULT_TIMEOUT_MS;
-	read_params.register_address = DINFOX_REGISTER_BOARD_ID;
+	read_params.register_address = DINFOX_REG_ADDR_NODE_ID;
 	read_params.type = NODE_REPLY_TYPE_VALUE;
 	// Configure read data.
 	read_data.raw = NULL;
@@ -369,29 +336,24 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	LBUS_set_mode(LBUS_MODE_DECODING);
 	// Loop on all addresses.
 	for (node_address=0 ; node_address<=DINFOX_NODE_ADDRESS_LBUS_LAST ; node_address++) {
-		// Ping address.
-		status = _AT_BUS_ping(node_address, &read_status);
+		// Uppdate address.
+		read_params.node_address = node_address;
+		// Read NODE_ID register.
+		status = _AT_BUS_read_register(&read_params, &read_data, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply status.
 		if (read_status.all == 0) {
-			// Node found (even if an error was returned after ping command).
-			(*nodes_count)++;
-			// Store address and reset board ID.
-			nodes_list[node_list_idx].address = node_address;
-			nodes_list[node_list_idx].board_id = DINFOX_BOARD_ID_ERROR;
-			// Get board ID.
-			read_params.node_address = node_address;
-			status = _AT_BUS_read_register(&read_params, &read_data, &read_status);
-			if (status != NODE_SUCCESS) goto errors;
-			// Check reply status.
-			if (read_status.all == 0) {
+			// Check node address consistency.
+			if ((read_data.value & DINFOX_REG_NODE_ID_MASK_NODE_ADDR) == node_address) {
 				// Update board ID.
-				nodes_list[node_list_idx].board_id = (uint8_t) read_data.value;
+				nodes_list[(*nodes_count)].address = ((read_data.value & DINFOX_REG_NODE_ID_MASK_NODE_ADDR) >> 0);
+				nodes_list[(*nodes_count)].board_id = ((read_data.value & DINFOX_REG_NODE_ID_MASK_BOARD_ID) >> 8);
+				// Update nodes count.
+				(*nodes_count)++;
 			}
-			node_list_idx++;
-			// Check index.
-			if (node_list_idx >= nodes_list_size) break;
 		}
+		// Check index.
+		if ((*nodes_count) >= nodes_list_size) break;
 		IWDG_reload();
 	}
 	// Go back to raw mode.

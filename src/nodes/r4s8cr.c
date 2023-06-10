@@ -8,7 +8,7 @@
 #include "r4s8cr.h"
 
 #include "at_usb.h"
-#include "dinfox.h"
+#include "dinfox_types.h"
 #include "lpuart.h"
 #include "mode.h"
 #include "node.h"

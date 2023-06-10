@@ -8,7 +8,7 @@
 #include "node.h"
 
 #include "at_bus.h"
-#include "dinfox.h"
+#include "dinfox_types.h"
 #include "lbus.h"
 #include "r4s8cr.h"
 #include "string.h"

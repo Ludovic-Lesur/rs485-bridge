@@ -7,7 +7,6 @@
 
 #include "lpuart.h"
 
-#include "dinfox.h"
 #include "exti.h"
 #include "gpio.h"
 #include "lptim.h"
