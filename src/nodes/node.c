@@ -8,8 +8,9 @@
 #include "node.h"
 
 #include "at_bus.h"
-#include "dinfox_types.h"
+#include "dinfox_common.h"
 #include "lbus.h"
+#include "node_common.h"
 #include "r4s8cr.h"
 #include "string.h"
 #include "types.h"
@@ -115,9 +116,6 @@ errors:
 NODE_status_t NODE_send_command(NODE_command_parameters_t* command_params) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_reply_parameters_t unused_reply_params;
-	NODE_read_data_t unused_read_data;
-	NODE_access_status_t unused_access_status;
 	// Check parameters.
 	if (command_params == NULL) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -127,12 +125,10 @@ NODE_status_t NODE_send_command(NODE_command_parameters_t* command_params) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	// Do not wait for reply.
-	unused_reply_params.type = NODE_REPLY_TYPE_NONE;
 	// Send command with current protocol.
 	switch (node_protocol) {
 	case NODE_PROTOCOL_AT_BUS:
-		status = AT_BUS_send_command(command_params, &unused_reply_params, &unused_read_data, &unused_access_status);
+		status = AT_BUS_send_command(command_params);
 		break;
 	case NODE_PROTOCOL_R4S8CR:
 		status = R4S8CR_send_command(command_params);

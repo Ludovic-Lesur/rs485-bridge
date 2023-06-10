@@ -8,9 +8,10 @@
 #include "lbus.h"
 
 #include "at_bus.h"
-#include "dinfox_types.h"
+#include "dinfox_common.h"
 #include "lpuart.h"
 #include "node.h"
+#include "node_common.h"
 #include "types.h"
 
 /*** LBUS local macros ***/

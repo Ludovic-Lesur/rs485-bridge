@@ -26,3 +26,6 @@ The project is organized as follow:
     * `applicative`: high-level **application** layers.
 * `startup`: MCU **startup** code (from ARM).
 * `linker`: MCU **linker** script (from ARM).
+
+## Dependencies
+The `inc/dinfox` and `src/dinfox` folders of the [XM project](https://github.com/Ludovic-Lesur/xm) must linked to the DIM project, as they contain common data definition related to the DINFox system.

@@ -8,9 +8,10 @@
 #ifndef __NODE_H__
 #define __NODE_H__
 
-#include "dinfox_types.h"
+#include "dinfox_common.h"
 #include "lptim.h"
 #include "lpuart.h"
+#include "node_common.h"
 #include "string.h"
 #include "types.h"
 
@@ -29,7 +30,7 @@ typedef enum {
 	NODE_ERROR_REGISTER_ADDRESS,
 	NODE_ERROR_REGISTER_FORMAT,
 	NODE_ERROR_STRING_DATA_INDEX,
-	NODE_ERROR_READ_TYPE,
+	NODE_ERROR_REPLY_TYPE,
 	NODE_ERROR_ACCESS,
 	NODE_ERROR_NONE_RADIO_MODULE,
 	NODE_ERROR_SIGFOX_PAYLOAD_TYPE,
@@ -47,77 +48,10 @@ typedef enum {
 	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST)
 } NODE_status_t;
 
-typedef enum {
-	NODE_PROTOCOL_AT_BUS = 0,
-	NODE_PROTOCOL_R4S8CR,
-	NODE_PROTOCOL_LAST
-} NODE_protocol_t;
-
-typedef struct {
-	NODE_address_t address;
-	uint8_t board_id;
-} NODE_t;
-
 typedef struct {
 	NODE_t list[NODES_LIST_SIZE_MAX];
 	uint8_t count;
 } NODE_list_t;
-
-typedef enum {
-	NODE_REPLY_TYPE_NONE = 0,
-	NODE_REPLY_TYPE_RAW,
-	NODE_REPLY_TYPE_OK,
-	NODE_REPLY_TYPE_VALUE,
-	NODE_REPLY_TYPE_BYTE_ARRAY,
-	NODE_REPLY_TYPE_LAST
-} NODE_reply_type_t;
-
-typedef struct {
-	NODE_address_t node_address;
-	char_t* command;
-} NODE_command_parameters_t;
-
-typedef struct {
-	NODE_reply_type_t type;
-	STRING_format_t format; // Expected value format.
-	uint32_t timeout_ms;
-	// For byte array.
-	uint8_t byte_array_size;
-	uint8_t exact_length;
-} NODE_reply_parameters_t;
-
-typedef struct {
-	NODE_address_t node_address;
-	uint8_t register_address;
-	uint32_t timeout_ms;
-	STRING_format_t format; // Expected value format.
-	NODE_reply_type_t type;
-} NODE_read_parameters_t;
-
-typedef struct {
-	char_t* raw;
-	int32_t value;
-	uint8_t* byte_array;
-	uint8_t extracted_length;
-} NODE_read_data_t;
-
-typedef struct {
-	NODE_address_t node_address;
-	uint8_t register_address;
-	uint32_t timeout_ms;
-	STRING_format_t format; // Register value format.
-	int32_t value;
-} NODE_write_parameters_t;
-
-typedef union {
-	struct {
-		unsigned error_received : 1;
-		unsigned parser_error : 1;
-		unsigned reply_timeout : 1;
-		unsigned sequence_timeout : 1;
-	};
-	uint8_t all;
-} NODE_access_status_t;
 
 /*** NODES global variables ***/
 

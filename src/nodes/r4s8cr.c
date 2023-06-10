@@ -8,10 +8,11 @@
 #include "r4s8cr.h"
 
 #include "at_usb.h"
-#include "dinfox_types.h"
+#include "dinfox_common.h"
 #include "lpuart.h"
 #include "mode.h"
 #include "node.h"
+#include "node_common.h"
 
 /*** R4S8CR local macros ***/
 
@@ -69,7 +70,7 @@ static void _R4S8CR_flush_buffers(void) {
  * @param read_status:	Pointer to the read operation status.
  * @return status:		Function execution status.
  */
-NODE_status_t _R4S8CR_read_register(NODE_read_parameters_t* read_params, NODE_read_data_t* read_data, NODE_access_status_t* read_status) {
+static NODE_status_t _R4S8CR_read_register(NODE_read_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
@@ -77,16 +78,12 @@ NODE_status_t _R4S8CR_read_register(NODE_read_parameters_t* read_params, NODE_re
 	uint32_t reply_time_ms = 0;
 	uint8_t relay_box_id = 0;
 	// Check parameters.
-	if ((read_params == NULL) || (read_data == NULL) || (read_status == NULL)) {
+	if ((read_params == NULL) || (reg_value == NULL) || (read_status == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	if ((read_params -> format) != STRING_FORMAT_BOOLEAN) {
-		status = NODE_ERROR_REGISTER_FORMAT;
-		goto errors;
-	}
-	if ((read_params -> type) != NODE_REPLY_TYPE_VALUE) {
-		status = NODE_ERROR_READ_TYPE;
+	if (((read_params -> reply_params).type) != NODE_REPLY_TYPE_VALUE) {
+		status = NODE_ERROR_REPLY_TYPE;
 		goto errors;
 	}
 	if ((read_params -> register_address) >= R4S8CR_REGISTER_LAST) {
@@ -125,11 +122,11 @@ NODE_status_t _R4S8CR_read_register(NODE_read_parameters_t* read_params, NODE_re
 		// Check number of received bytes.
 		if (r4s8cr_ctx.reply_size >= R4S8CR_REPLY_SIZE_BYTES) {
 			// Update value.
-			(read_data -> value) = r4s8cr_ctx.reply[(read_params -> register_address) + R4S8CR_REPLY_SIZE_BYTES - R4S8CR_REGISTER_LAST];
+			(*reg_value) = r4s8cr_ctx.reply[(read_params -> register_address) + R4S8CR_REPLY_SIZE_BYTES - R4S8CR_REGISTER_LAST];
 			break;
 		}
 		// Exit if timeout.
-		if (reply_time_ms > (read_params -> timeout_ms)) {
+		if (reply_time_ms > ((read_params -> reply_params).timeout_ms)) {
 			// Set status to timeout.
 			(read_status -> reply_timeout) = 1;
 			break;
@@ -190,10 +187,10 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	NODE_read_parameters_t read_params;
-	NODE_read_data_t read_data;
 	NODE_access_status_t read_status;
 	NODE_address_t node_address = 0;
 	uint8_t node_list_idx = 0;
+	uint32_t reg_value = 0;
 	// Check parameters.
 	if ((nodes_list == NULL) || (nodes_count == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -202,21 +199,15 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	// Reset count.
 	(*nodes_count) = 0;
 	// Build read input common parameters.
-	read_params.format = STRING_FORMAT_BOOLEAN;
-	read_params.timeout_ms = R4S8CR_TIMEOUT_MS;
 	read_params.register_address = R4S8CR_REGISTER_RELAY_1;
-	read_params.type = NODE_REPLY_TYPE_VALUE;
-	// Configure read data.
-	read_data.raw = NULL;
-	read_data.value = 0;
-	read_data.byte_array = NULL;
-	read_data.extracted_length = 0;
+	read_params.reply_params.timeout_ms = R4S8CR_TIMEOUT_MS;
+	read_params.reply_params.type = NODE_REPLY_TYPE_VALUE;
 	// Loop on all addresses.
 	for (node_address=DINFOX_NODE_ADDRESS_R4S8CR_START ; node_address<(DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR) ; node_address++) {
 		// Update read parameters.
 		read_params.node_address = node_address;
 		// Ping address.
-		status = _R4S8CR_read_register(&read_params, &read_data, &read_status);
+		status = _R4S8CR_read_register(&read_params, &reg_value, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply status.
 		if (read_status.all == 0) {
