@@ -9,25 +9,12 @@
 #define __R4S8CR_H__
 
 #include "node.h"
+#include "node_common.h"
 
 /*** R4S8CR macros ***/
 
 #define R4S8CR_TIMEOUT_MS		100
 #define R4S8CR_NODE_ADDRESS		0xFF
-
-/*** R4S8CR structures ***/
-
-typedef enum {
-	R4S8CR_REGISTER_RELAY_1 = 0,
-	R4S8CR_REGISTER_RELAY_2,
-	R4S8CR_REGISTER_RELAY_3,
-	R4S8CR_REGISTER_RELAY_4,
-	R4S8CR_REGISTER_RELAY_5,
-	R4S8CR_REGISTER_RELAY_6,
-	R4S8CR_REGISTER_RELAY_7,
-	R4S8CR_REGISTER_RELAY_8,
-	R4S8CR_REGISTER_LAST,
-} R4S8CR_register_address_t;
 
 /*** R4S8CR functions ***/
 

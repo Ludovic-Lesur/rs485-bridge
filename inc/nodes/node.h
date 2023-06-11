@@ -49,6 +49,11 @@ typedef enum {
 } NODE_status_t;
 
 typedef struct {
+	NODE_address_t address;
+	uint8_t board_id;
+} NODE_t;
+
+typedef struct {
 	NODE_t list[NODES_LIST_SIZE_MAX];
 	uint8_t count;
 } NODE_list_t;

@@ -13,10 +13,13 @@
 #include "mode.h"
 #include "node.h"
 #include "node_common.h"
+#include "r4s8cr_reg.h"
 
 /*** R4S8CR local macros ***/
 
 #define R4S8CR_BAUD_RATE					9600
+
+#define R4S8CR_NUMBER_OF_RELAYS				8
 
 #define R4S8CR_BUFFER_SIZE_BYTES			128
 #define R4S8CR_REPLY_BUFFER_DEPTH			16
@@ -31,7 +34,8 @@
 
 #define R4S8CR_REPLY_PARSING_DELAY_MS		10
 
-#define R4S8CR_REPLY_SIZE_BYTES				(R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES + R4S8CR_REGISTER_LAST)
+#define R4S8CR_REPLY_HEADER_SIZE			(R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES)
+#define R4S8CR_REPLY_SIZE_BYTES				(R4S8CR_REPLY_HEADER_SIZE + R4S8CR_NUMBER_OF_RELAYS)
 
 /*** R4S8CR local structures ***/
 
@@ -77,6 +81,8 @@ static NODE_status_t _R4S8CR_read_register(NODE_read_parameters_t* read_params, 
 	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
 	uint32_t reply_time_ms = 0;
 	uint8_t relay_box_id = 0;
+	uint8_t rxst = 0;
+	uint8_t idx = 0;
 	// Check parameters.
 	if ((read_params == NULL) || (reg_value == NULL) || (read_status == NULL)) {
 		status = NODE_ERROR_NULL_PARAMETER;
@@ -86,7 +92,7 @@ static NODE_status_t _R4S8CR_read_register(NODE_read_parameters_t* read_params, 
 		status = NODE_ERROR_REPLY_TYPE;
 		goto errors;
 	}
-	if ((read_params -> register_address) >= R4S8CR_REGISTER_LAST) {
+	if ((read_params -> register_address) >= R4S8CR_REG_ADDR_LAST) {
 		status = NODE_ERROR_REGISTER_ADDRESS;
 		goto errors;
 	}
@@ -121,8 +127,14 @@ static NODE_status_t _R4S8CR_read_register(NODE_read_parameters_t* read_params, 
 		reply_time_ms += R4S8CR_REPLY_PARSING_DELAY_MS;
 		// Check number of received bytes.
 		if (r4s8cr_ctx.reply_size >= R4S8CR_REPLY_SIZE_BYTES) {
-			// Update value.
-			(*reg_value) = r4s8cr_ctx.reply[(read_params -> register_address) + R4S8CR_REPLY_SIZE_BYTES - R4S8CR_REGISTER_LAST];
+			// Update register.
+			(*reg_value) = 0;
+			for (idx=0 ; idx<R4S8CR_NUMBER_OF_RELAYS ; idx++) {
+				// Get relay state.
+				rxst = (r4s8cr_ctx.reply[R4S8CR_REPLY_HEADER_SIZE + idx] == 0) ? 0 : 1;
+				// Update bit.
+				(*reg_value) |= (rxst << idx);
+			}
 			break;
 		}
 		// Exit if timeout.
@@ -199,7 +211,7 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	// Reset count.
 	(*nodes_count) = 0;
 	// Build read input common parameters.
-	read_params.register_address = R4S8CR_REGISTER_RELAY_1;
+	read_params.register_address = R4S8CR_REG_ADDR_STATUS_CONTROL;
 	read_params.reply_params.timeout_ms = R4S8CR_TIMEOUT_MS;
 	read_params.reply_params.type = NODE_REPLY_TYPE_VALUE;
 	// Loop on all addresses.
