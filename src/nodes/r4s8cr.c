@@ -74,7 +74,7 @@ static void _R4S8CR_flush_buffers(void) {
  * @param read_status:	Pointer to the read operation status.
  * @return status:		Function execution status.
  */
-static NODE_status_t _R4S8CR_read_register(NODE_read_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
+static NODE_status_t _R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
@@ -92,16 +92,16 @@ static NODE_status_t _R4S8CR_read_register(NODE_read_parameters_t* read_params, 
 		status = NODE_ERROR_REPLY_TYPE;
 		goto errors;
 	}
-	if ((read_params -> register_address) >= R4S8CR_REG_ADDR_LAST) {
+	if ((read_params -> reg_addr) >= R4S8CR_REG_ADDR_LAST) {
 		status = NODE_ERROR_REGISTER_ADDRESS;
 		goto errors;
 	}
-	if (((read_params -> node_address) < DINFOX_NODE_ADDRESS_R4S8CR_START) || ((read_params -> node_address) >= (DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR))) {
+	if (((read_params -> node_addr) < DINFOX_NODE_ADDRESS_R4S8CR_START) || ((read_params -> node_addr) >= (DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR))) {
 		status = NODE_ERROR_NODE_ADDRESS;
 		goto errors;
 	}
 	// Convert node address to ID.
-	relay_box_id = ((read_params -> node_address) - DINFOX_NODE_ADDRESS_R4S8CR_START + 1) & 0x0F;
+	relay_box_id = ((read_params -> node_addr) - DINFOX_NODE_ADDRESS_R4S8CR_START + 1) & 0x0F;
 	// Flush buffers and status.
 	_R4S8CR_flush_buffers();
 	(read_status -> all) = 0;
@@ -198,9 +198,9 @@ errors:
 NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* nodes_count) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
-	NODE_read_parameters_t read_params;
+	NODE_access_parameters_t read_params;
 	NODE_access_status_t read_status;
-	NODE_address_t node_address = 0;
+	NODE_address_t node_addr = 0;
 	uint8_t node_list_idx = 0;
 	uint32_t reg_value = 0;
 	// Check parameters.
@@ -211,13 +211,13 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	// Reset count.
 	(*nodes_count) = 0;
 	// Build read input common parameters.
-	read_params.register_address = R4S8CR_REG_ADDR_STATUS_CONTROL;
+	read_params.reg_addr = R4S8CR_REG_ADDR_STATUS_CONTROL;
 	read_params.reply_params.timeout_ms = R4S8CR_TIMEOUT_MS;
 	read_params.reply_params.type = NODE_REPLY_TYPE_VALUE;
 	// Loop on all addresses.
-	for (node_address=DINFOX_NODE_ADDRESS_R4S8CR_START ; node_address<(DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR) ; node_address++) {
+	for (node_addr=DINFOX_NODE_ADDRESS_R4S8CR_START ; node_addr<(DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR) ; node_addr++) {
 		// Update read parameters.
-		read_params.node_address = node_address;
+		read_params.node_addr = node_addr;
 		// Ping address.
 		status = _R4S8CR_read_register(&read_params, &reg_value, &read_status);
 		if (status != NODE_SUCCESS) goto errors;
@@ -226,7 +226,7 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 			// Node found.
 			(*nodes_count)++;
 			// Store address and reset board ID.
-			nodes_list[node_list_idx].address = node_address;
+			nodes_list[node_list_idx].address = node_addr;
 			nodes_list[node_list_idx].board_id = DINFOX_BOARD_ID_R4S8CR;
 		}
 	}

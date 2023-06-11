@@ -90,7 +90,7 @@ static const AT_USB_command_t AT_USB_COMMAND_LIST[] = {
 	{PARSER_MODE_COMMAND, "AT$SCAN", STRING_NULL, "Scan all slaves connected to the RS485 bus", _AT_USB_node_scan_callback},
 	{PARSER_MODE_COMMAND, "AT$PR?", STRING_NULL, "Get current node protocol", _AT_USB_node_get_protocol_callback},
 	{PARSER_MODE_HEADER, "AT$PR=", "protocol[dec]", "Set node protocol (0=AT_BUS, 1=R4S8CR)", _AT_USB_node_set_protocol_callback},
-	{PARSER_MODE_HEADER, AT_USB_NODE_TRANSFER_HEADER, "node_address[hex],command[str]", "Send node command", _AT_USB_node_command_callback},
+	{PARSER_MODE_HEADER, AT_USB_NODE_TRANSFER_HEADER, "node_addr[hex],command[str]", "Send node command", _AT_USB_node_command_callback},
 };
 
 static AT_USB_context_t at_usb_ctx;
@@ -396,7 +396,7 @@ static void _AT_USB_node_command_callback(void) {
 	PARSER_status_t parser_status = PARSER_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	NODE_command_parameters_t command_params;
-	int32_t node_address = 0;
+	int32_t node_addr = 0;
 	uint8_t command_offset = 0;
 	// Check if TX is allowed.
 	if (CONFIG_get_tx_mode() == CONFIG_TX_DISABLED) {
@@ -404,17 +404,17 @@ static void _AT_USB_node_command_callback(void) {
 		goto errors;
 	}
 	// Parse node address.
-	parser_status = PARSER_get_parameter(&at_usb_ctx.parser, STRING_FORMAT_HEXADECIMAL, AT_USB_CHAR_SEPARATOR, &node_address);
+	parser_status = PARSER_get_parameter(&at_usb_ctx.parser, STRING_FORMAT_HEXADECIMAL, AT_USB_CHAR_SEPARATOR, &node_addr);
 	PARSER_error_check_print();
 	// Set command offset.
 	command_offset = at_usb_ctx.parser.separator_idx + 1;
 	// Update parameters.
-	command_params.node_address = (NODE_address_t) node_address;
+	command_params.node_addr = (NODE_address_t) node_addr;
 	command_params.command = (char_t*) &(at_usb_ctx.command[command_offset]);
 	// Print node access.
 	_AT_USB_reply_add_value(DINFOX_NODE_ADDRESS_DIM, STRING_FORMAT_HEXADECIMAL, 1);
 	_AT_USB_reply_add_string(" > ");
-	_AT_USB_reply_add_value(command_params.node_address, STRING_FORMAT_HEXADECIMAL, 1);
+	_AT_USB_reply_add_value(command_params.node_addr, STRING_FORMAT_HEXADECIMAL, 1);
 	_AT_USB_reply_add_string(" : ");
 	_AT_USB_reply_add_string(command_params.command);
 	_AT_USB_reply_send();

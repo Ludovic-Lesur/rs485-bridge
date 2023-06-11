@@ -18,9 +18,16 @@
 /*** AT BUS functions ***/
 
 void AT_BUS_init(void);
+
 NODE_status_t AT_BUS_send_command(NODE_command_parameters_t* command_params);
+
+NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status);
+NODE_status_t AT_BUS_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status);
+
 NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* nodes_count);
+
 NODE_status_t AT_BUS_task(void);
+
 void AT_BUS_fill_rx_buffer(uint8_t rx_byte);
 
 #endif /* __AT_BUS_H__ */
