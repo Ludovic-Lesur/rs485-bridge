@@ -26,9 +26,10 @@
 #define AT_BUS_FRAME_END				STRING_CHAR_CR
 
 #define AT_BUS_BUFFER_SIZE_BYTES		128
+#define AT_BUS_STRING_VALUE_BUFFER_SIZE	16
 #define AT_BUS_REPLY_BUFFER_DEPTH		16
 
-#define AT_BUS_REPLY_PARSING_DELAY_MS	50
+#define AT_BUS_REPLY_PARSING_DELAY_MS	20
 #define AT_BUS_SEQUENCE_TIMEOUT_MS		120000
 
 #define AT_BUS_COMMAND_WRITE_REGISTER	"AT$W="
@@ -118,8 +119,6 @@ static NODE_status_t _AT_BUS_wait_reply(NODE_reply_parameters_t* reply_params, u
 	NODE_status_t status = NODE_SUCCESS;
 	PARSER_status_t parser_status = PARSER_SUCCESS;
 	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
-	uint8_t reg_bytes[DINFOX_REG_SIZE_BYTES];
-	uint8_t reg_size_bytes = 0;
 	uint32_t reply_time_ms = 0;
 	uint32_t sequence_time_ms = 0;
 	uint8_t reply_count = 0;
@@ -161,12 +160,8 @@ static NODE_status_t _AT_BUS_wait_reply(NODE_reply_parameters_t* reply_params, u
 					parser_status = PARSER_compare(&at_bus_ctx.reply[at_bus_ctx.reply_read_idx].parser, PARSER_MODE_COMMAND, AT_BUS_REPLY_OK);
 					break;
 				case NODE_REPLY_TYPE_VALUE:
-					// Parse register as byte array.
-					parser_status = PARSER_get_byte_array(&at_bus_ctx.reply[at_bus_ctx.reply_read_idx].parser, STRING_CHAR_NULL, DINFOX_REG_SIZE_BYTES, 0, (uint8_t*) reg_bytes, &reg_size_bytes);
-					// Convert byte array to 32 bits value.
-					if (parser_status == PARSER_SUCCESS) {
-						(*reg_value) = DINFOX_byte_array_to_u32(reg_bytes, reg_size_bytes);
-					}
+					// Parse register.
+					parser_status = DINFOX_parser_register(&at_bus_ctx.reply[at_bus_ctx.reply_read_idx].parser, reg_value);
 					break;
 				default:
 					status = NODE_ERROR_REPLY_TYPE;
@@ -267,6 +262,7 @@ NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint
 	NODE_command_parameters_t command_params;
 	char_t command[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
 	uint8_t command_size = 0;
+	char_t str_value[AT_BUS_STRING_VALUE_BUFFER_SIZE];
 	uint32_t unused_reg_value = 0;
 	// Check parameters.
 	if ((write_params == NULL) || (write_status == NULL)) {
@@ -279,17 +275,23 @@ NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint
 	// Build write command.
 	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_WRITE_REGISTER, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
-	string_status = STRING_append_value(command, AT_BUS_BUFFER_SIZE_BYTES, (write_params -> reg_addr), STRING_FORMAT_HEXADECIMAL, 0, &command_size);
+	string_status = DINFOX_register_to_string((uint32_t) (write_params -> reg_addr), str_value);
+	STRING_status_check(NODE_ERROR_BASE_STRING);
+	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, str_value, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
 	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_SEPARATOR, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
-	string_status = STRING_append_value(command, AT_BUS_BUFFER_SIZE_BYTES, reg_value, STRING_FORMAT_HEXADECIMAL, 0, &command_size);
+	string_status = DINFOX_register_to_string(reg_value, str_value);
+	STRING_status_check(NODE_ERROR_BASE_STRING);
+	string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, str_value, &command_size);
 	STRING_status_check(NODE_ERROR_BASE_STRING);
 	// Add mask if needed.
 	if (reg_mask != DINFOX_REG_MASK_ALL) {
 		string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, AT_BUS_COMMAND_SEPARATOR, &command_size);
 		STRING_status_check(NODE_ERROR_BASE_STRING);
-		string_status = STRING_append_value(command, AT_BUS_BUFFER_SIZE_BYTES, reg_mask, STRING_FORMAT_HEXADECIMAL, 0, &command_size);
+		string_status = DINFOX_register_to_string(reg_mask, str_value);
+		STRING_status_check(NODE_ERROR_BASE_STRING);
+		string_status = STRING_append_string(command, AT_BUS_BUFFER_SIZE_BYTES, str_value, &command_size);
 		STRING_status_check(NODE_ERROR_BASE_STRING);
 	}
 	// Send command.

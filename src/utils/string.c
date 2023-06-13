@@ -404,6 +404,11 @@ STRING_status_t STRING_hexadecimal_string_to_byte_array(char_t* str, char_t end_
 		}
 		char_idx++;
 	}
+	// Check that the number of analyzed characters is even.
+	if ((char_idx % 2) != 0) {
+		status = STRING_ERROR_HEXADECIMAL_ODD_SIZE;
+		goto errors;
+	}
 errors:
 	return status;
 }
