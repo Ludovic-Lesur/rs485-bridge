@@ -161,7 +161,7 @@ static NODE_status_t _AT_BUS_wait_reply(NODE_reply_parameters_t* reply_params, u
 					break;
 				case NODE_REPLY_TYPE_VALUE:
 					// Parse register.
-					parser_status = DINFOX_parser_register(&at_bus_ctx.reply[at_bus_ctx.reply_read_idx].parser, reg_value);
+					parser_status = DINFOX_parse_register(&at_bus_ctx.reply[at_bus_ctx.reply_read_idx].parser, STRING_CHAR_NULL, reg_value);
 					break;
 				default:
 					status = NODE_ERROR_REPLY_TYPE;
