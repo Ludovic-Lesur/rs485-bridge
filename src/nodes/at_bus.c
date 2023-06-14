@@ -369,10 +369,10 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 		// Check reply status.
 		if (read_status.all == 0) {
 			// Check node address consistency.
-			if (DINFOX_get_field_value(reg_value, COMMON_REG_NODE_ID_MASK_NODE_ADDR) == node_addr) {
+			if (DINFOX_read_field(reg_value, COMMON_REG_NODE_ID_MASK_NODE_ADDR) == node_addr) {
 				// Update board ID.
-				nodes_list[(*nodes_count)].address = DINFOX_get_field_value(reg_value, COMMON_REG_NODE_ID_MASK_NODE_ADDR);
-				nodes_list[(*nodes_count)].board_id = DINFOX_get_field_value(reg_value, COMMON_REG_NODE_ID_MASK_BOARD_ID);
+				nodes_list[(*nodes_count)].address = DINFOX_read_field(reg_value, COMMON_REG_NODE_ID_MASK_NODE_ADDR);
+				nodes_list[(*nodes_count)].board_id = DINFOX_read_field(reg_value, COMMON_REG_NODE_ID_MASK_BOARD_ID);
 				// Update nodes count.
 				(*nodes_count)++;
 			}
