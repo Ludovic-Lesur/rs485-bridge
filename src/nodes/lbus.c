@@ -8,7 +8,7 @@
 #include "lbus.h"
 
 #include "at_bus.h"
-#include "dinfox_common.h"
+#include "dinfox.h"
 #include "lpuart.h"
 #include "node.h"
 #include "node_common.h"

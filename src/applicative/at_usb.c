@@ -11,7 +11,7 @@
 #include "adc.h"
 #include "config.h"
 #include "common_reg.h"
-#include "dinfox_common.h"
+#include "dinfox.h"
 #include "error.h"
 #include "lbus.h"
 #include "lptim.h"

@@ -8,7 +8,7 @@
 #ifndef __NODE_H__
 #define __NODE_H__
 
-#include "dinfox_common.h"
+#include "dinfox.h"
 #include "lptim.h"
 #include "lpuart.h"
 #include "node_common.h"

@@ -9,7 +9,7 @@
 
 #include "at_usb.h"
 #include "common_reg.h"
-#include "dinfox_common.h"
+#include "dinfox.h"
 #include "gpio.h"
 #include "iwdg.h"
 #include "lbus.h"
