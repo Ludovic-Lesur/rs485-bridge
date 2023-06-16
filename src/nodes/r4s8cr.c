@@ -17,25 +17,30 @@
 
 /*** R4S8CR local macros ***/
 
-#define R4S8CR_BAUD_RATE					9600
+#define R4S8CR_NUMBER_OF_RELAYS					8
+#define R4S8CR_NUMBER_OF_IDS					15
 
-#define R4S8CR_NUMBER_OF_RELAYS				8
+#define R4S8CR_NODE_ADDRESS						0xFF
 
-#define R4S8CR_BUFFER_SIZE_BYTES			128
-#define R4S8CR_REPLY_BUFFER_DEPTH			16
+#define R4S8CR_BAUD_RATE						9600
 
-#define R4S8CR_ADDRESS_SIZE_BYTES			1
-#define R4S8CR_RELAY_ADDRESS_SIZE_BYTES		1
-#define R4S8CR_COMMAND_SIZE_BYTES			1
+#define R4S8CR_DEFAULT_TIMEOUT_MS				100
 
-#define R4S8CR_COMMAND_READ					0xA0
-#define R4S8CR_COMMAND_OFF					0x00
-#define R4S8CR_COMMAND_ON					0x01
+#define R4S8CR_BUFFER_SIZE_BYTES				64
+#define R4S8CR_REPLY_BUFFER_DEPTH				16
 
-#define R4S8CR_REPLY_PARSING_DELAY_MS		10
+#define R4S8CR_ADDRESS_SIZE_BYTES				1
+#define R4S8CR_RELAY_ADDRESS_SIZE_BYTES			1
+#define R4S8CR_COMMAND_SIZE_BYTES				1
 
-#define R4S8CR_REPLY_HEADER_SIZE			(R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES)
-#define R4S8CR_REPLY_SIZE_BYTES				(R4S8CR_REPLY_HEADER_SIZE + R4S8CR_NUMBER_OF_RELAYS)
+#define R4S8CR_COMMAND_READ						0xA0
+#define R4S8CR_COMMAND_OFF						0x00
+#define R4S8CR_COMMAND_ON						0x01
+
+#define R4S8CR_REPLY_PARSING_DELAY_MS			10
+
+#define R4S8CR_REPLY_HEADER_SIZE				(R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES)
+#define R4S8CR_REPLY_SIZE_BYTES					(R4S8CR_REPLY_HEADER_SIZE + R4S8CR_NUMBER_OF_RELAYS)
 
 /*** R4S8CR local structures ***/
 
@@ -68,40 +73,21 @@ static void _R4S8CR_flush_buffers(void) {
 	r4s8cr_ctx.reply_size = 0;
 }
 
-/* READ R4S8CR NODE REGISTER.
- * @param read_params:	Pointer to the read operation parameters.
- * @param read_data:	Pointer to the read result.
+/* READ RELAYS STATE.
+ * @param relay_box_id:	Relay box ID.
+ * @param timeout_ms:	Read operation timeout in ms.
+ * @param rxst:			Pointer to the relays state.
  * @param read_status:	Pointer to the read operation status.
  * @return status:		Function execution status.
  */
-static NODE_status_t _R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
+static NODE_status_t _R4S8CR_read_relays_state(uint8_t relay_box_id, uint32_t timeout_ms, uint8_t* rxst, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
 	uint32_t reply_time_ms = 0;
-	uint8_t relay_box_id = 0;
-	uint8_t rxst = 0;
+	uint8_t rst = 0;
 	uint8_t idx = 0;
-	// Check parameters.
-	if ((read_params == NULL) || (reg_value == NULL) || (read_status == NULL)) {
-		status = NODE_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	if (((read_params -> reply_params).type) != NODE_REPLY_TYPE_VALUE) {
-		status = NODE_ERROR_REPLY_TYPE;
-		goto errors;
-	}
-	if ((read_params -> reg_addr) >= R4S8CR_REG_ADDR_LAST) {
-		status = NODE_ERROR_REGISTER_ADDRESS;
-		goto errors;
-	}
-	if (((read_params -> node_addr) < DINFOX_NODE_ADDRESS_R4S8CR_START) || ((read_params -> node_addr) >= (DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR))) {
-		status = NODE_ERROR_NODE_ADDRESS;
-		goto errors;
-	}
-	// Convert node address to ID.
-	relay_box_id = ((read_params -> node_addr) - DINFOX_NODE_ADDRESS_R4S8CR_START + 1) & 0x0F;
 	// Flush buffers and status.
 	_R4S8CR_flush_buffers();
 	(read_status -> all) = 0;
@@ -128,21 +114,66 @@ static NODE_status_t _R4S8CR_read_register(NODE_access_parameters_t* read_params
 		// Check number of received bytes.
 		if (r4s8cr_ctx.reply_size >= R4S8CR_REPLY_SIZE_BYTES) {
 			// Update register.
-			(*reg_value) = 0;
+			(*rxst) = 0;
 			for (idx=0 ; idx<R4S8CR_NUMBER_OF_RELAYS ; idx++) {
 				// Get relay state.
-				rxst = (r4s8cr_ctx.reply[R4S8CR_REPLY_HEADER_SIZE + idx] == 0) ? 0 : 1;
+				rst = (r4s8cr_ctx.reply[R4S8CR_REPLY_HEADER_SIZE + idx] == 0) ? 0 : 1;
 				// Update bit.
-				(*reg_value) |= (rxst << idx);
+				(*rxst) |= (rst << idx);
 			}
 			break;
 		}
 		// Exit if timeout.
-		if (reply_time_ms > ((read_params -> reply_params).timeout_ms)) {
+		if (reply_time_ms > timeout_ms) {
 			// Set status to timeout.
 			(read_status -> reply_timeout) = 1;
 			break;
 		}
+	}
+errors:
+	LPUART1_disable_rx();
+	return status;
+}
+
+/* READ R4S8CR NODE REGISTER.
+ * @param read_params:	Pointer to the read operation parameters.
+ * @param read_data:	Pointer to the read result.
+ * @param read_status:	Pointer to the read operation status.
+ * @return status:		Function execution status.
+ */
+NODE_status_t _R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	uint8_t relay_box_id = 0;
+	uint8_t rxst = 0;
+	// Check parameters.
+	if ((read_params == NULL) || (reg_value == NULL) || (read_status == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	if ((read_params -> reg_addr) >= R4S8CR_REG_ADDR_LAST) {
+		status = NODE_ERROR_REGISTER_ADDRESS;
+		goto errors;
+	}
+	if (((read_params -> node_addr) < DINFOX_NODE_ADDRESS_R4S8CR_START) || ((read_params -> node_addr) >= (DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR))) {
+		status = NODE_ERROR_NODE_ADDRESS;
+		goto errors;
+	}
+	// Check address.
+	switch (read_params -> reg_addr) {
+	case R4S8CR_REG_ADDR_STATUS_CONTROL:
+		// Convert node address to ID.
+		relay_box_id = ((read_params -> node_addr) - DINFOX_NODE_ADDRESS_R4S8CR_START + 1) & 0x0F;
+		// Set relay state
+		status = _R4S8CR_read_relays_state(relay_box_id, ((read_params -> reply_params).timeout_ms), &rxst, read_status);
+		if (status != NODE_SUCCESS) goto errors;
+		// Write register fields.
+		(*reg_value) &= ~(R4S8CR_REG_STATUS_CONTROL_MASK_ALL);
+		(*reg_value) |= (rxst & R4S8CR_REG_STATUS_CONTROL_MASK_ALL);
+		break;
+	default:
+		status = NODE_ERROR_REGISTER_ADDRESS;
+		goto errors;
 	}
 errors:
 	return status;
@@ -212,8 +243,8 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	(*nodes_count) = 0;
 	// Build read input common parameters.
 	read_params.reg_addr = R4S8CR_REG_ADDR_STATUS_CONTROL;
-	read_params.reply_params.timeout_ms = R4S8CR_TIMEOUT_MS;
 	read_params.reply_params.type = NODE_REPLY_TYPE_VALUE;
+	read_params.reply_params.timeout_ms = R4S8CR_DEFAULT_TIMEOUT_MS;
 	// Loop on all addresses.
 	for (node_addr=DINFOX_NODE_ADDRESS_R4S8CR_START ; node_addr<(DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR) ; node_addr++) {
 		// Update read parameters.

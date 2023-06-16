@@ -11,11 +11,6 @@
 #include "node.h"
 #include "node_common.h"
 
-/*** R4S8CR macros ***/
-
-#define R4S8CR_TIMEOUT_MS		100
-#define R4S8CR_NODE_ADDRESS		0xFF
-
 /*** R4S8CR functions ***/
 
 NODE_status_t R4S8CR_configure_phy(void);
