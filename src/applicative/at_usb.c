@@ -42,6 +42,8 @@
 #define AT_USB_STRING_VALUE_BUFFER_SIZE		16
 // DINFox boards name.
 static const char_t* DINFOX_BOARD_ID_NAME[DINFOX_BOARD_ID_LAST] = {"LVRM", "BPSM", "DDRM", "UHFM", "GPSM", "SM", "DIM", "RRM", "DMM", "MPMCM", "R4S8CR"};
+// None protocol mode.
+#define AT_USB_NONE_PROTOCOL_BUFFER_SIZE	128
 
 /*** AT callbacks declaration ***/
 
@@ -54,6 +56,8 @@ static void _AT_USB_node_scan_callback(void);
 static void _AT_USB_node_command_callback(void);
 static void _AT_USB_node_get_protocol_callback(void);
 static void _AT_USB_node_set_protocol_callback(void);
+static void _AT_USB_node_get_baud_rate_callback(void);
+static void _AT_USB_node_set_baud_rate_callback(void);
 
 /*** AT local structures ***/
 
@@ -74,8 +78,10 @@ typedef struct {
 	// Replies.
 	char_t reply[AT_USB_REPLY_BUFFER_SIZE];
 	uint32_t reply_size;
-	// Protocol.
-	NODE_protocol_t node_protocol;
+	// None protocol mode.
+	volatile uint8_t none_protocol_buf[AT_USB_NONE_PROTOCOL_BUFFER_SIZE];
+	volatile uint32_t none_protocol_buf_write_idx;
+	volatile uint32_t none_protocol_buf_read_idx;
 } AT_USB_context_t;
 
 /*** AT local global variables ***/
@@ -89,7 +95,9 @@ static const AT_USB_command_t AT_USB_COMMAND_LIST[] = {
 	{PARSER_MODE_COMMAND, "AT$ADC?", STRING_NULL, "Get ADC measurements", _AT_USB_adc_callback},
 	{PARSER_MODE_COMMAND, "AT$SCAN", STRING_NULL, "Scan all slaves connected to the RS485 bus", _AT_USB_node_scan_callback},
 	{PARSER_MODE_COMMAND, "AT$PR?", STRING_NULL, "Get current node protocol", _AT_USB_node_get_protocol_callback},
-	{PARSER_MODE_HEADER, "AT$PR=", "protocol[dec]", "Set node protocol (0=AT_BUS, 1=R4S8CR)", _AT_USB_node_set_protocol_callback},
+	{PARSER_MODE_HEADER, "AT$PR=", "protocol[dec]", "Set node protocol (0=None, 1=AT_BUS, 2=R4S8CR)", _AT_USB_node_set_protocol_callback},
+	{PARSER_MODE_COMMAND, "AT$BR?", STRING_NULL, "Get baud_rate used in none protocol mode", _AT_USB_node_get_baud_rate_callback},
+	{PARSER_MODE_HEADER, "AT$BR=", "baud_rate[dec]", "Set baud rate used in none protocol mode", _AT_USB_node_set_baud_rate_callback},
 	{PARSER_MODE_HEADER, AT_USB_NODE_TRANSFER_HEADER, "node_addr[hex],command[str]", "Send node command", _AT_USB_node_command_callback},
 };
 
@@ -349,9 +357,12 @@ errors:
  */
 static void _AT_USB_node_get_protocol_callback(void) {
 	// Print value.
-	_AT_USB_reply_add_value((int32_t) at_usb_ctx.node_protocol, STRING_FORMAT_DECIMAL, 0);
+	_AT_USB_reply_add_value((int32_t) NODE_get_protocol(), STRING_FORMAT_DECIMAL, 0);
 	// Print name.
-	switch (at_usb_ctx.node_protocol) {
+	switch (NODE_get_protocol()) {
+	case NODE_PROTOCOL_NONE:
+		_AT_USB_reply_add_string(" (None)");
+		break;
 	case NODE_PROTOCOL_AT_BUS:
 		_AT_USB_reply_add_string(" (AT_BUS)");
 		break;
@@ -380,8 +391,37 @@ static void _AT_USB_node_set_protocol_callback(void) {
 	// Set protocol.
 	node_status = NODE_set_protocol((NODE_protocol_t) protocol);
 	NODE_error_check_print();
-	// Update local variable.
-	at_usb_ctx.node_protocol = protocol;
+	_AT_USB_print_ok();
+errors:
+	return;
+}
+
+/* AT$BR? EXECUTION CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _AT_USB_node_get_baud_rate_callback(void) {
+	_AT_USB_reply_add_value((int32_t) NODE_get_baud_rate(), STRING_FORMAT_DECIMAL, 0);
+	_AT_USB_reply_add_string(" bauds");
+	_AT_USB_reply_send();
+	_AT_USB_print_ok();
+}
+
+/* AT$BR? EXECUTION CALLBACK.
+ * @param:	None.
+ * @return:	None.
+ */
+static void _AT_USB_node_set_baud_rate_callback(void) {
+	// Local variables.
+	PARSER_status_t parser_status = PARSER_SUCCESS;
+	NODE_status_t node_status = NODE_SUCCESS;
+	int32_t baud_rate = 0;
+	// Parse node address.
+	parser_status = PARSER_get_parameter(&at_usb_ctx.parser, STRING_FORMAT_DECIMAL, STRING_CHAR_NULL, &baud_rate);
+	PARSER_error_check_print();
+	// Set protocol.
+	node_status = NODE_set_baud_rate((uint32_t) baud_rate);
+	NODE_error_check_print();
 	_AT_USB_print_ok();
 errors:
 	return;
@@ -478,9 +518,16 @@ errors:
  * @return:	None.
  */
 void AT_USB_init(void) {
+	// Local variables.
+	uint32_t idx = 0;
 	// Init context.
 	_AT_USB_reset_parser();
-	at_usb_ctx.node_protocol = NODE_PROTOCOL_AT_BUS;
+	// Reset buffer.
+	for (idx=0 ; idx<AT_USB_NONE_PROTOCOL_BUFFER_SIZE ; idx++) {
+		at_usb_ctx.none_protocol_buf[idx] = 0;
+	}
+	at_usb_ctx.none_protocol_buf_write_idx = 0;
+	at_usb_ctx.none_protocol_buf_read_idx = 0;
 	// Start continuous listening in AT_BUS mode by default.
 	NODE_set_protocol(NODE_PROTOCOL_AT_BUS);
 	LPUART1_enable_rx();
@@ -495,6 +542,7 @@ void AT_USB_init(void) {
 void AT_USB_task(void) {
 	// Local variables.
 	NODE_status_t node_status = NODE_SUCCESS;
+	USART_status_t usart_status = USART_SUCCESS;
 	// Trigger decoding function if line end found.
 	if (at_usb_ctx.line_end_flag != 0) {
 		// Decode and execute command.
@@ -507,6 +555,14 @@ void AT_USB_task(void) {
 	NODE_error_check_print();
 	node_status = R4S8CR_task();
 	NODE_error_check_print();
+	// Check none protocol buffer.
+	while (at_usb_ctx.none_protocol_buf_write_idx != at_usb_ctx.none_protocol_buf_read_idx) {
+		// Send byte over UART.
+		usart_status = USART2_send_byte(at_usb_ctx.none_protocol_buf[at_usb_ctx.none_protocol_buf_read_idx]);
+		USART_error_check();
+		// Increment read index.
+		at_usb_ctx.none_protocol_buf_read_idx = (at_usb_ctx.none_protocol_buf_read_idx + 1) % AT_USB_NONE_PROTOCOL_BUFFER_SIZE;
+	}
 errors:
 	return;
 }
@@ -519,6 +575,17 @@ void AT_USB_print(char_t* str) {
 	// Print string.
 	_AT_USB_reply_add_string(str);
 	_AT_USB_reply_send();
+}
+
+/* PRINT BYTE OVER AT USB INTERFACE.
+ * @param rx_byte:	Byte to print.
+ * @return:			None.
+ */
+void AT_USB_fill_none_protocol_buffer(uint8_t rx_byte) {
+	// Append byte in buffer.
+	at_usb_ctx.none_protocol_buf[at_usb_ctx.none_protocol_buf_write_idx] = rx_byte;
+	// Increment write index.
+	at_usb_ctx.none_protocol_buf_write_idx = (at_usb_ctx.none_protocol_buf_write_idx + 1) % AT_USB_NONE_PROTOCOL_BUFFER_SIZE;
 }
 
 /* FILL AT COMMAND BUFFER WITH A NEW BYTE (CALLED BY USART INTERRUPT).

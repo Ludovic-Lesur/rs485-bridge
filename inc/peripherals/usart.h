@@ -25,6 +25,7 @@ typedef enum {
 void USART2_init(void);
 void USART2_enable_interrupt(void);
 void USART2_disable_interrupt(void);
+USART_status_t USART2_send_byte(uint8_t tx_byte);
 USART_status_t USART2_send_string(char_t* tx_string);
 
 #define USART_status_check(error_base) { if (usart_status != USART_SUCCESS) { status = error_base + usart_status; goto errors; }}

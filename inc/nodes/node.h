@@ -52,8 +52,15 @@ NODE_list_t NODES_LIST;
 /*** NODE functions ***/
 
 void NODE_init(void);
+
 NODE_status_t NODE_set_protocol(NODE_protocol_t protocol);
+NODE_protocol_t NODE_get_protocol(void);
+
+NODE_status_t NODE_set_baud_rate(uint32_t baud_rate);
+uint32_t NODE_get_baud_rate(void);
+
 NODE_status_t NODE_scan(void);
+
 NODE_status_t NODE_send_command(NODE_command_parameters_t* command_params);
 
 #define NODE_status_check(error_base) { if (node_status != NODE_SUCCESS) { status = error_base + node_status; goto errors; }}

@@ -8,6 +8,7 @@
 #include "node.h"
 
 #include "at_bus.h"
+#include "at_usb.h"
 #include "dinfox.h"
 #include "lbus.h"
 #include "node_common.h"
@@ -18,6 +19,7 @@
 /*** NODE local global variables ***/
 
 static NODE_protocol_t node_protocol = NODE_PROTOCOL_AT_BUS;
+static uint32_t node_baud_rate = 115200;
 
 /*** NODE local functions ***/
 
@@ -55,6 +57,8 @@ void NODE_init(void) {
 NODE_status_t NODE_set_protocol(NODE_protocol_t protocol) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
+	LPUART_config_t lpuart_config;
 	// Check parameter.
 	if (protocol >= NODE_PROTOCOL_LAST) {
 		status = NODE_ERROR_PROTOCOL;
@@ -62,6 +66,13 @@ NODE_status_t NODE_set_protocol(NODE_protocol_t protocol) {
 	}
 	// Configure LPUART.
 	switch (protocol) {
+	case NODE_PROTOCOL_NONE:
+		// Configure physical interface.
+		lpuart_config.baud_rate = node_baud_rate;
+		lpuart_config.rx_callback = &AT_USB_fill_none_protocol_buffer;
+		lpuart1_status = LPUART1_configure(&lpuart_config);
+		LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+		break;
 	case NODE_PROTOCOL_AT_BUS:
 		// Configure physical interface.
 		status = LBUS_configure_phy();
@@ -81,6 +92,34 @@ NODE_status_t NODE_set_protocol(NODE_protocol_t protocol) {
 	node_protocol = protocol;
 errors:
 	return status;
+}
+
+/* GET PHYSICAL PROTOCOL.
+ * @param:					None.
+ * @return node_protocol:	Protocol used on RS485 bus.
+ */
+NODE_protocol_t NODE_get_protocol(void) {
+	return node_protocol;
+}
+
+/* SET PHYSICAL BAUD RATE (FOR NONE PROTOCOL).
+ * @param protocol:	Protocol to use on RS485 bus.
+ * @return status:	Function execution status.
+ */
+NODE_status_t NODE_set_baud_rate(uint32_t baud_rate) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	// Update local variable.
+	node_baud_rate = baud_rate;
+	return status;
+}
+
+/* GET PHYSICAL BAUD RATE (FOR NONE PROTOCOL).
+ * @param:					None.
+ * @return node_baud_rate:	Baud rate used in none protoco mode.
+ */
+uint32_t NODE_get_baud_rate(void) {
+	return node_baud_rate;
 }
 
 /* SCAN ALL NODE ON BUS.

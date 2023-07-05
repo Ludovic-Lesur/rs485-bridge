@@ -44,29 +44,6 @@ void __attribute__((optimize("-O0"))) USART2_IRQHandler(void) {
 	}
 }
 
-/* FILL USART TX BUFFER WITH A NEW BYTE.
- * @param tx_byte:	Byte to append.
- * @return status:	Function execution status.
- */
-static USART_status_t _USART2_fill_tx_buffer(uint8_t tx_byte) {
-	// Local variables.
-	USART_status_t status = USART_SUCCESS;
-	uint32_t loop_count = 0;
-	// Fill transmit register.
-	USART2 -> TDR = tx_byte;
-	// Wait for transmission to complete.
-	while (((USART2 -> ISR) & (0b1 << 7)) == 0) {
-		// Wait for TXE='1' or timeout.
-		loop_count++;
-		if (loop_count > USART_TIMEOUT_COUNT) {
-			status = USART_ERROR_TX_TIMEOUT;
-			goto errors;
-		}
-	}
-errors:
-	return status;
-}
-
 /*** USART functions ***/
 
 /* CONFIGURE USART2 PERIPHERAL.
@@ -112,6 +89,29 @@ void USART2_disable_interrupt(void) {
 	NVIC_disable_interrupt(NVIC_INTERRUPT_USART2);
 }
 
+/* FILL USART TX BUFFER WITH A NEW BYTE.
+ * @param tx_byte:	Byte to append.
+ * @return status:	Function execution status.
+ */
+USART_status_t USART2_send_byte(uint8_t tx_byte) {
+	// Local variables.
+	USART_status_t status = USART_SUCCESS;
+	uint32_t loop_count = 0;
+	// Fill transmit register.
+	USART2 -> TDR = tx_byte;
+	// Wait for transmission to complete.
+	while (((USART2 -> ISR) & (0b1 << 7)) == 0) {
+		// Wait for TXE='1' or timeout.
+		loop_count++;
+		if (loop_count > USART_TIMEOUT_COUNT) {
+			status = USART_ERROR_TX_TIMEOUT;
+			goto errors;
+		}
+	}
+errors:
+	return status;
+}
+
 /* SEND A BYTE ARRAY THROUGH USART2.
  * @param tx_string:	Byte array to send.
  * @return status:		Function execution status.
@@ -128,7 +128,7 @@ USART_status_t USART2_send_string(char_t* tx_string) {
 	// Loop on all characters.
 	while (*tx_string) {
 		// Fill TX buffer with new byte.
-		status = _USART2_fill_tx_buffer((uint8_t) *(tx_string++));
+		status = USART2_send_byte((uint8_t) *(tx_string++));
 		if (status != USART_SUCCESS) goto errors;
 		// Check character count.
 		char_count++;
