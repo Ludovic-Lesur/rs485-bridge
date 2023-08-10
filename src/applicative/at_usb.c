@@ -20,6 +20,7 @@
 #include "node.h"
 #include "nvic.h"
 #include "parser.h"
+#include "power.h"
 #include "pwr.h"
 #include "r4s8cr.h"
 #include "rcc_reg.h"
@@ -47,6 +48,7 @@ static const char_t* DINFOX_BOARD_ID_NAME[DINFOX_BOARD_ID_LAST] = {"LVRM", "BPSM
 
 /*** AT callbacks declaration ***/
 
+/*******************************************************************/
 static void _AT_USB_print_ok(void);
 static void _AT_USB_print_command_list(void);
 static void _AT_USB_print_sw_version(void);
@@ -61,6 +63,7 @@ static void _AT_USB_node_set_baud_rate_callback(void);
 
 /*** AT local structures ***/
 
+/*******************************************************************/
 typedef struct {
 	PARSER_mode_t mode;
 	char_t* syntax;
@@ -69,6 +72,7 @@ typedef struct {
 	void (*callback)(void);
 } AT_USB_command_t;
 
+/*******************************************************************/
 typedef struct {
 	// Command.
 	volatile char_t command[AT_USB_COMMAND_BUFFER_SIZE];
@@ -105,19 +109,39 @@ static AT_USB_context_t at_usb_ctx;
 
 /*** AT local functions ***/
 
-/* GENERIC MACRO TO ADD A CHARACTER TO THE REPLY BUFFER.
- * @param character:	Character to add.
- * @return:				None.
- */
+/*******************************************************************/
 #define _AT_USB_reply_add_char(character) { \
 	at_usb_ctx.reply[at_usb_ctx.reply_size] = character; \
 	at_usb_ctx.reply_size = (at_usb_ctx.reply_size + 1) % AT_USB_REPLY_BUFFER_SIZE; \
 }
 
-/* APPEND A STRING TO THE REPONSE BUFFER.
- * @param tx_string:	String to add.
- * @return:				None.
- */
+/*******************************************************************/
+static void _AT_USB_fill_rx_buffer(uint8_t rx_byte) {
+	// Append byte if line end flag is not allready set.
+	if (at_usb_ctx.line_end_flag == 0) {
+		// Check ending characters.
+		if ((rx_byte == STRING_CHAR_CR) || (rx_byte == STRING_CHAR_LF)) {
+			at_usb_ctx.command[at_usb_ctx.command_size] = STRING_CHAR_NULL;
+			at_usb_ctx.line_end_flag = 1;
+		}
+		else {
+			// Store new byte.
+			at_usb_ctx.command[at_usb_ctx.command_size] = rx_byte;
+			// Manage index.
+			at_usb_ctx.command_size = (at_usb_ctx.command_size + 1) % AT_USB_COMMAND_BUFFER_SIZE;
+		}
+	}
+}
+
+/*******************************************************************/
+static void _AT_USB_fill_none_protocol_buffer(uint8_t rx_byte) {
+	// Append byte in buffer.
+	at_usb_ctx.none_protocol_buf[at_usb_ctx.none_protocol_buf_write_idx] = rx_byte;
+	// Increment write index.
+	at_usb_ctx.none_protocol_buf_write_idx = (at_usb_ctx.none_protocol_buf_write_idx + 1) % AT_USB_NONE_PROTOCOL_BUFFER_SIZE;
+}
+
+/*******************************************************************/
 static void _AT_USB_reply_add_string(char_t* tx_string) {
 	// Fill TX buffer with new bytes.
 	while (*tx_string) {
@@ -125,12 +149,7 @@ static void _AT_USB_reply_add_string(char_t* tx_string) {
 	}
 }
 
-/* APPEND A VALUE TO THE REPONSE BUFFER.
- * @param tx_value:		Value to add.
- * @param format:       Printing format.
- * @param print_prefix: Print base prefix is non zero.
- * @return:				None.
- */
+/*******************************************************************/
 static void _AT_USB_reply_add_value(int32_t tx_value, STRING_format_t format, uint8_t print_prefix) {
 	// Local variables.
 	STRING_status_t string_status = STRING_SUCCESS;
@@ -140,41 +159,38 @@ static void _AT_USB_reply_add_value(int32_t tx_value, STRING_format_t format, ui
 	for (idx=0 ; idx<AT_USB_STRING_VALUE_BUFFER_SIZE ; idx++) str_value[idx] = STRING_CHAR_NULL;
 	// Convert value to string.
 	string_status = STRING_value_to_string(tx_value, format, print_prefix, str_value);
-	STRING_error_check();
+	STRING_stack_error();
 	// Add string.
 	_AT_USB_reply_add_string(str_value);
 }
 
-/* SEND AT REPONSE OVER AT INTERFACE.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_USB_reply_send(void) {
 	// Local variables.
-	USART_status_t usart_status = USART_SUCCESS;
+	USART_status_t usart2_status = USART_SUCCESS;
 	// Add ending string.
 	_AT_USB_reply_add_string(AT_USB_REPLY_END);
-	_AT_USB_reply_add_char(STRING_CHAR_NULL);
 	// Send response over UART.
-	usart_status = USART2_send_string(at_usb_ctx.reply);
-	USART_error_check();
+	usart2_status = USART2_write((uint8_t*) at_usb_ctx.reply, at_usb_ctx.reply_size);
+	USART2_stack_error();
 	// Flush reply buffer.
 	at_usb_ctx.reply_size = 0;
 }
 
-/* PRINT OK THROUGH AT INTERFACE.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
+static void _AT_USB_print(char_t* str) {
+	// Print string.
+	_AT_USB_reply_add_string(str);
+	_AT_USB_reply_send();
+}
+
+/*******************************************************************/
 static void _AT_USB_print_ok(void) {
 	_AT_USB_reply_add_string("OK");
 	_AT_USB_reply_send();
 }
 
-/* PRINT AN ERROR THROUGH AT INTERFACE.
- * @param error:	Error code to print.
- * @return:			None.
- */
+/*******************************************************************/
 static void _AT_USB_print_error(ERROR_t error) {
 	// Add error to stack.
 	ERROR_stack_add(error);
@@ -190,10 +206,7 @@ static void _AT_USB_print_error(ERROR_t error) {
 	_AT_USB_reply_send();
 }
 
-/* PRINT ALL SUPPORTED AT COMMANDS.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_USB_print_command_list(void) {
 	// Local variables.
 	uint32_t idx = 0;
@@ -212,10 +225,7 @@ static void _AT_USB_print_command_list(void) {
 	_AT_USB_print_ok();
 }
 
-/* PRINT SW VERSION.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_USB_print_sw_version(void) {
 	_AT_USB_reply_add_string("SW");
 	_AT_USB_reply_add_value((int32_t) GIT_MAJOR_VERSION, STRING_FORMAT_DECIMAL, 0);
@@ -233,10 +243,7 @@ static void _AT_USB_print_sw_version(void) {
 	_AT_USB_print_ok();
 }
 
-/* PRINT ERROR STACK.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_USB_print_error_stack(void) {
 	// Local variables.
 	ERROR_t error = SUCCESS;
@@ -261,46 +268,48 @@ static void _AT_USB_print_error_stack(void) {
 	_AT_USB_print_ok();
 }
 
-/* AT$ADC? EXECUTION CALLBACK.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_USB_adc_callback(void) {
 	// Local variables.
 	ADC_status_t adc1_status = ADC_SUCCESS;
+	POWER_status_t power_status = POWER_SUCCESS;
 	uint32_t voltage_mv = 0;
 	int8_t tmcu_degrees = 0;
 	// Trigger internal ADC conversions.
 	_AT_USB_reply_add_string("ADC running...");
 	_AT_USB_reply_send();
+	power_status = POWER_enable(POWER_DOMAIN_ANALOG, LPTIM_DELAY_MODE_ACTIVE);
+	POWER_print_error();
 	adc1_status = ADC1_perform_measurements();
-	ADC1_error_check_print();
+	ADC1_print_error();
+	power_status = POWER_disable(POWER_DOMAIN_ANALOG);
+	POWER_print_error();
 	// Read and print data.
 	// USB voltage.
 	_AT_USB_reply_add_string("Vusb=");
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VUSB_MV, &voltage_mv);
-	ADC1_error_check_print();
+	ADC1_print_error();
 	_AT_USB_reply_add_value((int32_t) voltage_mv, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string("mV");
 	_AT_USB_reply_send();
 	// RS bus voltage.
 	_AT_USB_reply_add_string("Vrs=");
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VRS_MV, &voltage_mv);
-	ADC1_error_check_print();
+	ADC1_print_error();
 	_AT_USB_reply_add_value((int32_t) voltage_mv, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string("mV");
 	_AT_USB_reply_send();
 	// MCU voltage.
 	_AT_USB_reply_add_string("Vmcu=");
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VMCU_MV, &voltage_mv);
-	ADC1_error_check_print();
+	ADC1_print_error();
 	_AT_USB_reply_add_value((int32_t) voltage_mv, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string("mV");
 	_AT_USB_reply_send();
 	// MCU temperature.
 	_AT_USB_reply_add_string("Tmcu=");
 	adc1_status = ADC1_get_tmcu(&tmcu_degrees);
-	ADC1_error_check_print();
+	ADC1_print_error();
 	_AT_USB_reply_add_value((int32_t) tmcu_degrees, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string("dC");
 	_AT_USB_reply_send();
@@ -309,10 +318,7 @@ errors:
 	return;
 }
 
-/* AT$SCAN EXECUTION CALLBACK.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_USB_node_scan_callback(void) {
 	// Local variables.
 	NODE_status_t node_status = NODE_SUCCESS;
@@ -321,7 +327,7 @@ static void _AT_USB_node_scan_callback(void) {
 	_AT_USB_reply_add_string("Nodes scan running...");
 	_AT_USB_reply_send();
 	node_status = NODE_scan();
-	NODE_error_check_print();
+	NODE_print_error();
 	// Print list.
 	_AT_USB_reply_add_value((int32_t) NODES_LIST.count, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string(" node(s) found");
@@ -351,10 +357,7 @@ errors:
 	return;
 }
 
-/* AT$PR? EXECUTION CALLBACK.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_USB_node_get_protocol_callback(void) {
 	// Print value.
 	_AT_USB_reply_add_value((int32_t) NODE_get_protocol(), STRING_FORMAT_DECIMAL, 0);
@@ -376,10 +379,7 @@ static void _AT_USB_node_get_protocol_callback(void) {
 	_AT_USB_print_ok();
 }
 
-/* AT$PR EXECUTION CALLBACK.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_USB_node_set_protocol_callback(void) {
 	// Local variables.
 	PARSER_status_t parser_status = PARSER_SUCCESS;
@@ -387,19 +387,16 @@ static void _AT_USB_node_set_protocol_callback(void) {
 	int32_t protocol = NODE_PROTOCOL_AT_BUS;
 	// Parse node address.
 	parser_status = PARSER_get_parameter(&at_usb_ctx.parser, STRING_FORMAT_DECIMAL, STRING_CHAR_NULL, &protocol);
-	PARSER_error_check_print();
+	PARSER_print_error();
 	// Set protocol.
 	node_status = NODE_set_protocol((NODE_protocol_t) protocol);
-	NODE_error_check_print();
+	NODE_print_error();
 	_AT_USB_print_ok();
 errors:
 	return;
 }
 
-/* AT$BR? EXECUTION CALLBACK.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_USB_node_get_baud_rate_callback(void) {
 	_AT_USB_reply_add_value((int32_t) NODE_get_baud_rate(), STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string(" bauds");
@@ -407,10 +404,7 @@ static void _AT_USB_node_get_baud_rate_callback(void) {
 	_AT_USB_print_ok();
 }
 
-/* AT$BR? EXECUTION CALLBACK.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_USB_node_set_baud_rate_callback(void) {
 	// Local variables.
 	PARSER_status_t parser_status = PARSER_SUCCESS;
@@ -418,19 +412,16 @@ static void _AT_USB_node_set_baud_rate_callback(void) {
 	int32_t baud_rate = 0;
 	// Parse node address.
 	parser_status = PARSER_get_parameter(&at_usb_ctx.parser, STRING_FORMAT_DECIMAL, STRING_CHAR_NULL, &baud_rate);
-	PARSER_error_check_print();
+	PARSER_print_error();
 	// Set protocol.
 	node_status = NODE_set_baud_rate((uint32_t) baud_rate);
-	NODE_error_check_print();
+	NODE_print_error();
 	_AT_USB_print_ok();
 errors:
 	return;
 }
 
-/* NODE SEND COMMAND EXECUTION CALLBACK.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_USB_node_command_callback(void) {
 	// Local variables.
 	PARSER_status_t parser_status = PARSER_SUCCESS;
@@ -445,7 +436,7 @@ static void _AT_USB_node_command_callback(void) {
 	}
 	// Parse node address.
 	parser_status = PARSER_get_parameter(&at_usb_ctx.parser, STRING_FORMAT_HEXADECIMAL, AT_USB_CHAR_SEPARATOR, &node_addr);
-	PARSER_error_check_print();
+	PARSER_print_error();
 	// Set command offset.
 	command_offset = at_usb_ctx.parser.separator_idx + 1;
 	// Update parameters.
@@ -460,15 +451,12 @@ static void _AT_USB_node_command_callback(void) {
 	_AT_USB_reply_send();
 	// Perform read operation.
 	node_status = NODE_send_command(&command_params);
-	NODE_error_check_print();
+	NODE_print_error();
 errors:
 	return;
 }
 
-/* RESET AT PARSER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_USB_reset_parser(void) {
 	// Flush buffers.
 	at_usb_ctx.command_size = 0;
@@ -482,10 +470,7 @@ static void _AT_USB_reset_parser(void) {
 	at_usb_ctx.parser.start_idx = 0;
 }
 
-/* PARSE THE CURRENT AT COMMAND BUFFER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 static void _AT_USB_decode(void) {
 	// Local variables.
 	uint8_t idx = 0;
@@ -513,10 +498,7 @@ errors:
 
 /*** AT functions ***/
 
-/* INIT AT MANAGER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void AT_USB_init(void) {
 	// Local variables.
 	uint32_t idx = 0;
@@ -528,84 +510,40 @@ void AT_USB_init(void) {
 	}
 	at_usb_ctx.none_protocol_buf_write_idx = 0;
 	at_usb_ctx.none_protocol_buf_read_idx = 0;
-	// Start continuous listening in AT_BUS mode by default.
+	// Init nodes layer in AT_BUS mode by default.
+	NODE_init(&_AT_USB_print, &_AT_USB_fill_none_protocol_buffer);
 	NODE_set_protocol(NODE_PROTOCOL_AT_BUS);
-	LPUART1_enable_rx();
-	// Enable USART.
-	USART2_enable_interrupt();
+	// Init USART and enable commands on USB side.
+	USART2_init(&_AT_USB_fill_rx_buffer);
+	USART2_enable_rx();
 }
 
-/* MAIN TASK OF AT COMMAND MANAGER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void AT_USB_task(void) {
 	// Local variables.
 	NODE_status_t node_status = NODE_SUCCESS;
-	USART_status_t usart_status = USART_SUCCESS;
+	USART_status_t usart2_status = USART_SUCCESS;
 	// Trigger decoding function if line end found.
 	if (at_usb_ctx.line_end_flag != 0) {
 		// Decode and execute command.
-		USART2_disable_interrupt();
+		USART2_disable_rx();
 		_AT_USB_decode();
-		USART2_enable_interrupt();
+		USART2_enable_rx();
 	}
 	// Perform continuous listening task.
 	node_status = AT_BUS_task();
-	NODE_error_check_print();
+	NODE_print_error();
 	node_status = R4S8CR_task();
-	NODE_error_check_print();
+	NODE_print_error();
 	// Check none protocol buffer.
 	while (at_usb_ctx.none_protocol_buf_write_idx != at_usb_ctx.none_protocol_buf_read_idx) {
 		// Send byte over UART.
-		usart_status = USART2_send_byte(at_usb_ctx.none_protocol_buf[at_usb_ctx.none_protocol_buf_read_idx]);
-		USART_error_check();
+		usart2_status = USART2_write((uint8_t*) &(at_usb_ctx.none_protocol_buf[at_usb_ctx.none_protocol_buf_read_idx]), 1);
+		USART2_stack_error();
 		// Increment read index.
 		at_usb_ctx.none_protocol_buf_read_idx = (at_usb_ctx.none_protocol_buf_read_idx + 1) % AT_USB_NONE_PROTOCOL_BUFFER_SIZE;
 	}
 errors:
 	return;
-}
-
-/* PRINT NODE FRAME OVER AT USB INTERFACE.
- * @param str:	String to print.
- * @return:		None.
- */
-void AT_USB_print(char_t* str) {
-	// Print string.
-	_AT_USB_reply_add_string(str);
-	_AT_USB_reply_send();
-}
-
-/* PRINT BYTE OVER AT USB INTERFACE.
- * @param rx_byte:	Byte to print.
- * @return:			None.
- */
-void AT_USB_fill_none_protocol_buffer(uint8_t rx_byte) {
-	// Append byte in buffer.
-	at_usb_ctx.none_protocol_buf[at_usb_ctx.none_protocol_buf_write_idx] = rx_byte;
-	// Increment write index.
-	at_usb_ctx.none_protocol_buf_write_idx = (at_usb_ctx.none_protocol_buf_write_idx + 1) % AT_USB_NONE_PROTOCOL_BUFFER_SIZE;
-}
-
-/* FILL AT COMMAND BUFFER WITH A NEW BYTE (CALLED BY USART INTERRUPT).
- * @param rx_byte:	Incoming byte.
- * @return:			None.
- */
-void AT_USB_fill_rx_buffer(uint8_t rx_byte) {
-	// Append byte if line end flag is not allready set.
-	if (at_usb_ctx.line_end_flag == 0) {
-		// Check ending characters.
-		if ((rx_byte == STRING_CHAR_CR) || (rx_byte == STRING_CHAR_LF)) {
-			at_usb_ctx.command[at_usb_ctx.command_size] = STRING_CHAR_NULL;
-			at_usb_ctx.line_end_flag = 1;
-		}
-		else {
-			// Store new byte.
-			at_usb_ctx.command[at_usb_ctx.command_size] = rx_byte;
-			// Manage index.
-			at_usb_ctx.command_size = (at_usb_ctx.command_size + 1) % AT_USB_COMMAND_BUFFER_SIZE;
-		}
-	}
 }
 

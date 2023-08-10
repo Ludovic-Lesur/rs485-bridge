@@ -1,7 +1,7 @@
 /*
  * exti.c
  *
- *  Created on: 25 oct. 2022
+ *  Created on: 18 apr. 2020
  *      Author: Ludo
  */
 
@@ -10,7 +10,6 @@
 #include "exti_reg.h"
 #include "gpio.h"
 #include "mapping.h"
-#include "nvic.h"
 #include "rcc_reg.h"
 #include "syscfg_reg.h"
 #include "types.h"
@@ -20,13 +19,37 @@
 #define EXTI_RTSR_FTSR_RESERVED_INDEX	18
 #define EXTI_RTSR_FTSR_MAX_INDEX		22
 
+/*** EXTI local global variables ***/
+
+static EXTI_gpio_irq_cb_t exti_gpio_irq_callbacks[GPIO_PINS_PER_PORT];
+
 /*** EXTI local functions ***/
 
-/* SET EXTI TRIGGER.
- * @param trigger:	Interrupt edge trigger (see EXTI_trigger_t enum).
- * @param line_idx:	Line index.
- * @return:			None.
- */
+#ifdef UHFM
+/*******************************************************************/
+#define _EXTI_irq_handler(gpio) { \
+	/* Check flag */ \
+	if (((EXTI -> PR) & (0b1 << (gpio.pin))) != 0) { \
+		/* Check mask and callback */ \
+		if ((((EXTI -> IMR) & (0b1 << (gpio.pin))) != 0) && (exti_gpio_irq_callbacks[gpio.pin] != NULL)) { \
+			/* Execute callback */ \
+			exti_gpio_irq_callbacks[gpio.pin](); \
+		} \
+		/* Clear flag */ \
+		EXTI -> PR |= (0b1 << (gpio.pin)); \
+	} \
+}
+#endif
+
+#ifdef UHFM
+/*******************************************************************/
+void __attribute__((optimize("-O0"))) EXTI4_15_IRQHandler(void) {
+	// S2LP GPIO0 (PA11).
+	_EXTI_irq_handler(GPIO_S2LP_GPIO0);
+}
+#endif
+
+/*******************************************************************/
 static void _EXTI_set_trigger(EXTI_trigger_t trigger, uint8_t line_idx) {
 	// Select triggers.
 	switch (trigger) {
@@ -55,42 +78,42 @@ static void _EXTI_set_trigger(EXTI_trigger_t trigger, uint8_t line_idx) {
 
 /*** EXTI functions ***/
 
-/* INIT EXTI PERIPHERAL.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void EXTI_init(void) {
+	// Local variables.
+	uint8_t idx = 0;
 	// Enable peripheral clock.
 	RCC -> APB2ENR |= (0b1 << 0); // SYSCFEN='1'.
 	// Mask all sources by default.
 	EXTI -> IMR = 0;
 	// Clear all flags.
 	EXTI_clear_all_flags();
-	// Set interrupts priority.
-	NVIC_set_priority(NVIC_INTERRUPT_EXTI_0_1, 3);
-	NVIC_set_priority(NVIC_INTERRUPT_EXTI_4_15, 0);
+	// Reset callbacks.
+	for (idx=0 ; idx<GPIO_PINS_PER_PORT ; idx++) {
+		exti_gpio_irq_callbacks[idx] = NULL;
+	}
 }
 
-/* CONFIGURE A GPIO AS EXTERNAL INTERRUPT SOURCE.
- * @param gpio:		GPIO to be attached to EXTI peripheral.
- * @param trigger:	Interrupt edge trigger (see EXTI_trigger_t enum).
- * @return:			None.
- */
-void EXTI_configure_gpio(const GPIO_pin_t* gpio, EXTI_trigger_t trigger) {
+/*******************************************************************/
+void EXTI_configure_gpio(const GPIO_pin_t* gpio, EXTI_trigger_t trigger, EXTI_gpio_irq_cb_t irq_callback) {
 	// Select GPIO port.
-	SYSCFG -> EXTICR[((gpio -> pin) / 4)] &= ~(0b1111 << (4 * ((gpio -> pin) % 4)));
-	SYSCFG -> EXTICR[((gpio -> pin) / 4)] |= ((gpio -> port_index) << (4 * ((gpio -> pin) % 4)));
+	SYSCFG -> EXTICR[((gpio -> pin) >> 2)] &= ~(0b1111 << (((gpio -> pin) % 4) << 2));
+	SYSCFG -> EXTICR[((gpio -> pin) >> 2)] |= ((gpio -> port_index) << (((gpio -> pin) % 4) << 2));
 	// Set mask.
 	EXTI -> IMR |= (0b1 << ((gpio -> pin))); // IMx='1'.
 	// Select triggers.
 	_EXTI_set_trigger(trigger, (gpio -> pin));
+	// Register callback.
+	exti_gpio_irq_callbacks[gpio -> pin] = irq_callback;
 }
 
-/* CONFIGURE A LINE AS INTERNAL INTERRUPT SOURCE.
- * @param line:		Line to configure (see EXTI_line_t enum).
- * @param trigger:	Interrupt edge trigger (see EXTI_trigger_t enum).
- * @return:			None.
- */
+/*******************************************************************/
+void EXTI_release_gpio(const GPIO_pin_t* gpio) {
+	// Set mask.
+	EXTI -> IMR &= ~(0b1 << ((gpio -> pin))); // IMx='0'.
+}
+
+/*******************************************************************/
 void EXTI_configure_line(EXTI_line_t line, EXTI_trigger_t trigger) {
 	// Set mask.
 	EXTI -> IMR |= (0b1 << line); // IMx='1'.
@@ -100,19 +123,13 @@ void EXTI_configure_line(EXTI_line_t line, EXTI_trigger_t trigger) {
 	}
 }
 
-/* CLEAR EXTI FLAG.
- * @param line:	Line to clear (see EXTI_line_t enum).
- * @return:		None.
- */
+/*******************************************************************/
 void EXTI_clear_flag(EXTI_line_t line) {
 	// Clear flag.
 	EXTI -> PR |= line; // PIFx='1'.
 }
 
-/* CLEAR ALL EXTI FLAGS.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void EXTI_clear_all_flags(void) {
 	// Clear all flags.
 	EXTI -> PR |= 0x007BFFFF; // PIFx='1'.

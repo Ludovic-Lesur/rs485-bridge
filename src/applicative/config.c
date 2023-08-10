@@ -13,14 +13,11 @@
 
 /*** CONFIG local macros ***/
 
-#define GPIO_TX_MODE		GPIO_MODE0
+#define GPIO_TX_MODE	GPIO_MODE0
 
 /*** CONFIG functions ***/
 
-/* READ TX MODE ON DIP SWITCH.
- * @param:			None.
- * @return tx_mode:	Current TX mode.
- */
+/*******************************************************************/
 CONFIG_tx_mode_t CONFIG_get_tx_mode(void) {
 	// Local variables.
 	CONFIG_tx_mode_t tx_mode = CONFIG_TX_DISABLED;

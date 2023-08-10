@@ -8,6 +8,7 @@
 #include "adc.h"
 
 #include "adc_reg.h"
+#include "gpio.h"
 #include "lptim.h"
 #include "mapping.h"
 #include "math.h"
@@ -16,21 +17,22 @@
 
 /*** ADC local macros ***/
 
-#define ADC_MEDIAN_FILTER_SIZE			9
-#define ADC_CENTER_AVERAGE_SIZE			3
+#define ADC_MEDIAN_FILTER_LENGTH		9
+#define ADC_CENTER_AVERAGE_LENGTH		3
 
 #define ADC_FULL_SCALE_12BITS			4095
 
 #define ADC_VREFINT_VOLTAGE_MV			((VREFINT_CAL * VREFINT_VCC_CALIB_MV) / (ADC_FULL_SCALE_12BITS))
-#define ADC_VMCU_DEFAULT_MV				3300
+#define ADC_VMCU_DEFAULT_MV				3000
 
 #define ADC_TIMEOUT_COUNT				1000000
 
-#define ADC_VOLTAGE_DIVIDER_RATIO_VUSB	2
-#define ADC_VOLTAGE_DIVIDER_RATIO_VRS	10
+#define ADC_INIT_DELAY_MS_REGULATOR		5
+#define ADC_INIT_DELAY_MS_VREF_TS		10
 
 /*** ADC local structures ***/
 
+/*******************************************************************/
 typedef enum {
 	ADC_CHANNEL_VRS = 4,
 	ADC_CHANNEL_VUSB = 5,
@@ -39,6 +41,22 @@ typedef enum {
 	ADC_CHANNEL_LAST = 19
 } ADC_channel_t;
 
+/*******************************************************************/
+typedef enum {
+	ADC_CONVERSION_TYPE_VMCU = 0,
+	ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION,
+	ADC_CONVERSION_TYPE_VOLTAGE_AMPLIFICATION,
+	ADC_CONVERSION_TYPE_LAST
+} ADC_conversion_t;
+
+/*******************************************************************/
+typedef struct {
+	ADC_channel_t channel;
+	ADC_conversion_t type;
+	uint32_t gain;
+} ADC_input_t;
+
+/*******************************************************************/
 typedef struct {
 	uint32_t vrefint_12bits;
 	uint32_t data[ADC_DATA_INDEX_LAST];
@@ -47,15 +65,16 @@ typedef struct {
 
 /*** ADC local global variables ***/
 
+static const ADC_input_t ADC_INPUTS[ADC_DATA_INDEX_LAST] = {
+	{ADC_CHANNEL_VREFINT, ADC_CONVERSION_TYPE_VMCU, 0},
+	{ADC_CHANNEL_VRS, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 10},
+	{ADC_CHANNEL_VUSB, ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION, 2}
+};
 static ADC_context_t adc_ctx;
 
 /*** ADC local functions ***/
 
-/* PERFORM A SINGLE ADC CONVERSION.
- * @param adc_channel:			Channel to convert.
- * @param adc_result_12bits:	Pointer to 32-bits value that will contain ADC raw result on 12 bits.
- * @return status:				Function execution status.
- */
+/*******************************************************************/
 static ADC_status_t _ADC1_single_conversion(ADC_channel_t adc_channel, uint32_t* adc_result_12bits) {
 	// Local variables.
 	ADC_status_t status = ADC_SUCCESS;
@@ -80,7 +99,7 @@ static ADC_status_t _ADC1_single_conversion(ADC_channel_t adc_channel, uint32_t*
 		// Wait end of conversion ('EOC='1') or timeout.
 		loop_count++;
 		if (loop_count > ADC_TIMEOUT_COUNT) {
-			status = ADC_ERROR_TIMEOUT;
+			status = ADC_ERROR_CONVERSION_TIMEOUT;
 			goto errors;
 		}
 	}
@@ -89,16 +108,12 @@ errors:
 	return status;
 }
 
-/* PERFORM SEVERAL CONVERSIONS FOLLOWED BY A MEDIAN FILTER.
- * @param adc_channel:			Channel to convert.
- * @param adc_result_12bits:	Pointer to 32-bits value that will contain ADC filtered result on 12 bits.
- * @return status:				Function execution status.
- */
+/*******************************************************************/
 static ADC_status_t _ADC1_filtered_conversion(ADC_channel_t adc_channel, uint32_t* adc_result_12bits) {
 	// Local variables.
 	ADC_status_t status = ADC_SUCCESS;
 	MATH_status_t math_status = MATH_SUCCESS;
-	uint32_t adc_sample_buf[ADC_MEDIAN_FILTER_SIZE] = {0x00};
+	uint32_t adc_sample_buf[ADC_MEDIAN_FILTER_LENGTH] = {0x00};
 	uint8_t idx = 0;
 	// Check parameters.
 	if (adc_channel >= ADC_CHANNEL_LAST) {
@@ -110,42 +125,18 @@ static ADC_status_t _ADC1_filtered_conversion(ADC_channel_t adc_channel, uint32_
 		goto errors;
 	}
 	// Perform all conversions.
-	for (idx=0 ; idx<ADC_MEDIAN_FILTER_SIZE ; idx++) {
+	for (idx=0 ; idx<ADC_MEDIAN_FILTER_LENGTH ; idx++) {
 		status = _ADC1_single_conversion(adc_channel, &(adc_sample_buf[idx]));
 		if (status != ADC_SUCCESS) goto errors;
 	}
 	// Apply median filter.
-	math_status = MATH_median_filter_u32(adc_sample_buf, ADC_MEDIAN_FILTER_SIZE, ADC_CENTER_AVERAGE_SIZE, adc_result_12bits);
-	MATH_status_check(ADC_ERROR_BASE_MATH);
+	math_status = MATH_median_filter_u32(adc_sample_buf, ADC_MEDIAN_FILTER_LENGTH, ADC_CENTER_AVERAGE_LENGTH, adc_result_12bits);
+	MATH_check_status(ADC_ERROR_BASE_MATH);
 errors:
 	return status;
 }
 
-/* PERFORM INTERNAL REFERENCE VOLTAGE CONVERSION.
- * @param:			None.
- * @return status:	Function execution status.
- */
-static ADC_status_t _ADC1_compute_vrefint(void) {
-	// Local variables.
-	ADC_status_t status = ADC_SUCCESS;
-	// Read raw reference voltage.
-	status = _ADC1_filtered_conversion(ADC_CHANNEL_VREFINT, &adc_ctx.vrefint_12bits);
-	return status;
-}
-
-/* COMPUTE MCU SUPPLY VOLTAGE.
- * @param:			None.
- * @return status:	Function execution status.
- */
-static void _ADC1_compute_vmcu(void) {
-	// Retrieve supply voltage from bandgap result.
-	adc_ctx.data[ADC_DATA_INDEX_VMCU_MV] = (VREFINT_CAL * VREFINT_VCC_CALIB_MV) / (adc_ctx.vrefint_12bits);
-}
-
-/* COMPUTE MCU TEMPERATURE THANKS TO INTERNAL VOLTAGE REFERENCE.
- * @param:			None.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 static ADC_status_t _ADC1_compute_tmcu(void) {
 	// Local variables.
 	ADC_status_t status = ADC_SUCCESS;
@@ -164,46 +155,64 @@ errors:
 	return status;
 }
 
-/* COMPUTE USB VOLTAGE.
- * @param:			None.
- * @return status:	Function execution status.
- */
-static ADC_status_t _ADC1_compute_vusb(void) {
+/*******************************************************************/
+static ADC_status_t _ADC1_compute_all_channels(void) {
 	// Local variables.
 	ADC_status_t status = ADC_SUCCESS;
-	uint32_t vusb_12bits = 0;
-	// Get raw result.
-	status = _ADC1_filtered_conversion(ADC_CHANNEL_VUSB, &vusb_12bits);
-	if (status != ADC_SUCCESS) goto errors;
-	// Convert to mV using bandgap result.
-	adc_ctx.data[ADC_DATA_INDEX_VUSB_MV] = (ADC_VREFINT_VOLTAGE_MV * vusb_12bits * ADC_VOLTAGE_DIVIDER_RATIO_VUSB) / (adc_ctx.vrefint_12bits);
+	uint8_t idx = 0;
+	uint32_t voltage_12bits = 0;
+	// Channels loop.
+	for (idx=0 ; idx<ADC_DATA_INDEX_LAST ; idx++) {
+		// Get raw result.
+		status = _ADC1_filtered_conversion(ADC_INPUTS[idx].channel, &voltage_12bits);
+		if (status != ADC_SUCCESS) goto errors;
+		// Update VREFINT.
+		if (ADC_INPUTS[idx].channel == ADC_CHANNEL_VREFINT) {
+			adc_ctx.vrefint_12bits = voltage_12bits;
+		}
+		// Convert to mV using VREFINT.
+		switch (ADC_INPUTS[idx].type) {
+		case ADC_CONVERSION_TYPE_VMCU:
+			// Retrieve supply voltage from bandgap result.
+			adc_ctx.data[idx] = (VREFINT_CAL * VREFINT_VCC_CALIB_MV) / (adc_ctx.vrefint_12bits);
+			break;
+		case ADC_CONVERSION_TYPE_VOLTAGE_ATTENUATION:
+			adc_ctx.data[idx] = (ADC_VREFINT_VOLTAGE_MV * voltage_12bits * ADC_INPUTS[idx].gain) / (adc_ctx.vrefint_12bits);
+			break;
+		default:
+			status = ADC_ERROR_CONVERSION_TYPE;
+			goto errors;
+		}
+	}
 errors:
 	return status;
 }
 
-/* COMPUTE USB VOLTAGE.
- * @param:			None.
- * @return status:	Function execution status.
- */
-static ADC_status_t _ADC1_compute_vrs(void) {
+/*******************************************************************/
+static ADC_status_t _ADC1_disable(void) {
 	// Local variables.
 	ADC_status_t status = ADC_SUCCESS;
-	uint32_t vrs_12bits = 0;
-	// Get raw result.
-	status = _ADC1_filtered_conversion(ADC_CHANNEL_VRS, &vrs_12bits);
-	if (status != ADC_SUCCESS) goto errors;
-	// Convert to mV using bandgap result.
-	adc_ctx.data[ADC_DATA_INDEX_VRS_MV] = (ADC_VREFINT_VOLTAGE_MV * vrs_12bits * ADC_VOLTAGE_DIVIDER_RATIO_VRS) / (adc_ctx.vrefint_12bits);
+	uint32_t loop_count = 0;
+	// Check ADC state.
+	if (((ADC1 -> CR) & (0b1 << 0)) == 0) goto errors; // Not an error but to exit directly.
+	// Disable ADC.
+	ADC1 -> CR |= (0b1 << 1); // ADDIS='1'.
+	// Wait for ADC to be disabled.
+	while (((ADC1 -> CR) & (0b1 << 0)) != 0) {
+		// Exit if timeout.
+		loop_count++;
+		if (loop_count > ADC_TIMEOUT_COUNT) {
+			status = ADC_ERROR_DISABLE_TIMEOUT;
+			break;
+		}
+	}
 errors:
 	return status;
 }
 
 /*** ADC functions ***/
 
-/* INIT ADC1 PERIPHERAL.
- * @param:			None.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 ADC_status_t ADC1_init(void) {
 	// Local variables.
 	ADC_status_t status = ADC_SUCCESS;
@@ -218,21 +227,17 @@ ADC_status_t ADC1_init(void) {
 	// Init GPIOs.
 	GPIO_configure(&GPIO_ADC1_IN4, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	GPIO_configure(&GPIO_ADC1_IN5, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-#ifdef HW1_1
-	GPIO_configure(&GPIO_MNTR_EN, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-#endif
 	// Enable peripheral clock.
 	RCC -> APB2ENR |= (0b1 << 9); // ADCEN='1'.
 	// Ensure ADC is disabled.
-	if (((ADC1 -> CR) & (0b1 << 0)) != 0) {
-		ADC1 -> CR |= (0b1 << 1); // ADDIS='1'.
-	}
+	status = _ADC1_disable();
+	if (status != ADC_SUCCESS) goto errors;
 	// Enable ADC voltage regulator.
 	ADC1 -> CR |= (0b1 << 28);
-	lptim1_status = LPTIM1_delay_milliseconds(5, 0);
-	LPTIM1_status_check(ADC_ERROR_BASE_LPTIM);
+	lptim1_status = LPTIM1_delay_milliseconds(ADC_INIT_DELAY_MS_REGULATOR, LPTIM_DELAY_MODE_ACTIVE);
+	LPTIM1_check_status(ADC_ERROR_BASE_LPTIM);
 	// ADC configuration.
-	ADC1 -> CFGR2 |= (0b01 << 30); // Use (PCLK2/2) as ADCCLK = SYSCLK/2 (see RCC_init() function).
+	ADC1 -> CFGR2 |= (0b01 << 30); // Use (PCLK2/2) as ADCCLK = SYSCLK/2.
 	ADC1 -> SMPR |= (0b111 << 0); // Maximum sampling time.
 	// ADC calibration.
 	ADC1 -> CR |= (0b1 << 31); // ADCAL='1'.
@@ -244,64 +249,54 @@ ADC_status_t ADC1_init(void) {
 			break;
 		}
 	}
-errors:
-	return status;
-}
-
-/* PERFORM INTERNAL ADC MEASUREMENTS.
- * @param:			None.
- * @return status:	Function execution status.
- */
-ADC_status_t ADC1_perform_measurements(void) {
-	// Local variables.
-	ADC_status_t status = ADC_SUCCESS;
-	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
-	uint32_t loop_count = 0;
 	// Enable ADC peripheral.
 	ADC1 -> CR |= (0b1 << 0); // ADEN='1'.
 	while (((ADC1 -> ISR) & (0b1 << 0)) == 0) {
 		// Wait for ADC to be ready (ADRDY='1') or timeout.
 		loop_count++;
 		if (loop_count > ADC_TIMEOUT_COUNT) {
-			status = ADC_ERROR_TIMEOUT;
+			status = ADC_ERROR_READY_TIMEOUT;
 			goto errors;
 		}
 	}
-#ifdef HW1_1
-	// Enable voltage dividers.
-	GPIO_write(&GPIO_MNTR_EN, 1);
-#endif
 	// Wake-up VREFINT and temperature sensor.
-	ADC1 -> CCR |= (0b11 << 22); // TSEN='1' and VREFEF='1'.
-	// Wait internal reference and voltage dividers stabilization.
-	lptim1_status = LPTIM1_delay_milliseconds(100, 0);
-	LPTIM1_status_check(ADC_ERROR_BASE_LPTIM);
-	// Perform measurements.
-	status = _ADC1_compute_vrefint();
-	if (status != ADC_SUCCESS) goto errors;
-	_ADC1_compute_vmcu();
-	status = _ADC1_compute_tmcu();
-	if (status != ADC_SUCCESS) goto errors;
-	status = _ADC1_compute_vusb();
-	if (status != ADC_SUCCESS) goto errors;
-	status = _ADC1_compute_vrs();
+	ADC1 -> CCR |= (0b11 << 22); // TSEN='1' and VREFEN='1'.
+	// Wait for startup.
+	lptim1_status = LPTIM1_delay_milliseconds(ADC_INIT_DELAY_MS_VREF_TS, LPTIM_DELAY_MODE_ACTIVE);
+	LPTIM1_check_status(ADC_ERROR_BASE_LPTIM);
 errors:
-	// Switch internal voltage reference off.
-	ADC1 -> CCR &= ~(0b11 << 22); // TSEN='0' and VREFEF='0'.
-#ifdef HW1_1
-	// Disable voltage dividers.
-	GPIO_write(&GPIO_MNTR_EN, 0);
-#endif
-	// Disable ADC peripheral.
-	ADC1 -> CR |= (0b1 << 1); // ADDIS='1'.
 	return status;
 }
 
-/* GET ADC DATA.
- * @param data_idx:	Index of the data to retrieve.
- * @param data:		Pointer that will contain ADC data.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
+ADC_status_t ADC1_de_init(void) {
+	// Local variables.
+	ADC_status_t status = ADC_SUCCESS;
+	// Switch internal voltage reference off.
+	ADC1 -> CCR &= ~(0b11 << 22); // TSEN='0' and VREFEF='0'.
+	// Disable ADC peripheral.
+	status = _ADC1_disable();
+	// Disable ADC voltage regulator.
+	ADC1 -> CR &= ~(0b1 << 28);
+	// Disable peripheral clock.
+	RCC -> APB2ENR &= ~(0b1 << 9); // ADCEN='0'.
+	return status;
+}
+
+/*******************************************************************/
+ADC_status_t ADC1_perform_measurements(void) {
+	// Local variables.
+	ADC_status_t status = ADC_SUCCESS;
+	// Perform conversions.
+	status = _ADC1_compute_all_channels();
+	if (status != ADC_SUCCESS) goto errors;
+	status = _ADC1_compute_tmcu();
+	if (status != ADC_SUCCESS) goto errors;
+errors:
+	return status;
+}
+
+/*******************************************************************/
 ADC_status_t ADC1_get_data(ADC_data_index_t data_idx, uint32_t* data) {
 	// Local variables.
 	ADC_status_t status = ADC_SUCCESS;
@@ -319,10 +314,7 @@ errors:
 	return status;
 }
 
-/* GET MCU TEMPERATURE.
- * @param tmcu_degrees:	Pointer to 8-bits value that will contain MCU temperature in degrees (2-complement).
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 ADC_status_t ADC1_get_tmcu(int8_t* tmcu_degrees) {
 	// Local variables.
 	ADC_status_t status = ADC_SUCCESS;

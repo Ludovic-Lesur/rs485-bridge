@@ -7,10 +7,8 @@
 
 #include "r4s8cr.h"
 
-#include "at_usb.h"
 #include "dinfox.h"
 #include "lpuart.h"
-#include "mode.h"
 #include "node.h"
 #include "node_common.h"
 #include "r4s8cr_reg.h"
@@ -44,23 +42,30 @@
 
 /*** R4S8CR local structures ***/
 
+/*******************************************************************/
 typedef struct {
 	uint8_t command[R4S8CR_BUFFER_SIZE_BYTES];
 	uint8_t command_size;
 	volatile uint8_t reply[R4S8CR_BUFFER_SIZE_BYTES];
 	volatile uint8_t reply_size;
+	NODE_print_frame_cb_t print_callback;
 } R4S8CR_context_t;
 
 /*** R4S8CR local global variables ***/
 
 static R4S8CR_context_t r4s8cr_ctx;
 
-/*** LBUS local functions ***/
+/*** R4S8CR local functions ***/
 
-/* FLUSH COMMAND BUFFER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
+static void _R4S8CR_fill_rx_buffer(uint8_t rx_byte) {
+	// Store incoming byte.
+	r4s8cr_ctx.reply[r4s8cr_ctx.reply_size] = rx_byte;
+	// Manage index.
+	r4s8cr_ctx.reply_size = (r4s8cr_ctx.reply_size + 1) % R4S8CR_BUFFER_SIZE_BYTES;
+}
+
+/*******************************************************************/
 static void _R4S8CR_flush_buffers(void) {
 	// Local variables.
 	uint8_t idx = 0;
@@ -73,13 +78,7 @@ static void _R4S8CR_flush_buffers(void) {
 	r4s8cr_ctx.reply_size = 0;
 }
 
-/* READ RELAYS STATE.
- * @param relay_box_id:	Relay box ID.
- * @param timeout_ms:	Read operation timeout in ms.
- * @param rxst:			Pointer to the relays state.
- * @param read_status:	Pointer to the read operation status.
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 static NODE_status_t _R4S8CR_read_relays_state(uint8_t relay_box_id, uint32_t timeout_ms, uint8_t* rxst, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -101,15 +100,15 @@ static NODE_status_t _R4S8CR_read_relays_state(uint8_t relay_box_id, uint32_t ti
 	if (status != NODE_SUCCESS) goto errors;
 	LPUART1_disable_rx();
 	// Send command.
-	lpuart1_status = LPUART1_send(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+	lpuart1_status = LPUART1_write(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
+	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 	// Enable reception.
 	LPUART1_enable_rx();
 	// Wait reply.
 	while (1) {
 		// Delay.
 		lptim1_status = LPTIM1_delay_milliseconds(R4S8CR_REPLY_PARSING_DELAY_MS, LPTIM_DELAY_MODE_STOP);
-		LPTIM1_status_check(NODE_ERROR_BASE_LPTIM);
+		LPTIM1_check_status(NODE_ERROR_BASE_LPTIM);
 		reply_time_ms += R4S8CR_REPLY_PARSING_DELAY_MS;
 		// Check number of received bytes.
 		if (r4s8cr_ctx.reply_size >= R4S8CR_REPLY_SIZE_BYTES) {
@@ -135,12 +134,7 @@ errors:
 	return status;
 }
 
-/* READ R4S8CR NODE REGISTER.
- * @param read_params:	Pointer to the read operation parameters.
- * @param read_data:	Pointer to the read result.
- * @param read_status:	Pointer to the read operation status.
- * @return status:		Function execution status.
- */
+/*******************************************************************/
 NODE_status_t _R4S8CR_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -181,24 +175,30 @@ errors:
 
 /*** R4S8CR functions ***/
 
-/* CONFIGURE PHYSICAL INTERFACE FOR R4S8CR.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
+void R4S8CR_init(NODE_print_frame_cb_t print_callback) {
+	// Init context.
+	_R4S8CR_flush_buffers();
+	// Register callback.
+	r4s8cr_ctx.print_callback = print_callback;
+}
+
+/*******************************************************************/
 NODE_status_t R4S8CR_configure_phy(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
-	LPUART_config_t lpuart_config;
+	LPUART_configuration_t lpuart_config;
 	// Configure physical interface.
 	lpuart_config.baud_rate = R4S8CR_BAUD_RATE;
-	lpuart_config.rx_callback = &R4S8CR_fill_rx_buffer;
+	lpuart_config.rx_callback = &_R4S8CR_fill_rx_buffer;
 	lpuart1_status = LPUART1_configure(&lpuart_config);
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 errors:
 	return status;
 }
 
+/*******************************************************************/
 NODE_status_t R4S8CR_send_command(NODE_command_parameters_t* command_params) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -206,26 +206,21 @@ NODE_status_t R4S8CR_send_command(NODE_command_parameters_t* command_params) {
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	// Convert ASCII to raw bytes.
 	string_status = STRING_hexadecimal_string_to_byte_array((command_params -> command), STRING_CHAR_NULL, r4s8cr_ctx.command, &r4s8cr_ctx.command_size);
-	STRING_status_check(NODE_ERROR_BASE_STRING);
+	STRING_check_status(NODE_ERROR_BASE_STRING);
 	// Configure physical interface.
 	status = R4S8CR_configure_phy();
 	if (status != NODE_SUCCESS) goto errors;
 	LPUART1_disable_rx();
 	// Send command.
-	lpuart1_status = LPUART1_send(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
-	LPUART1_status_check(NODE_ERROR_BASE_LPUART);
+	lpuart1_status = LPUART1_write(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
+	LPUART1_check_status(NODE_ERROR_BASE_LPUART);
 	// Enable reception.
 	LPUART1_enable_rx();
 errors:
 	return status;
 }
 
-/* SCAN R4S8CR NODES ON BUS.
- * @param nodes_list:		Node list to fill.
- * @param nodes_list_size:	Maximum size of the list.
- * @param nodes_count:		Pointer to byte that will contain the number of LBUS nodes detected.
- * @return status:			Function execution status.
- */
+/*******************************************************************/
 NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* nodes_count) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -265,10 +260,7 @@ errors:
 	return status;
 }
 
-/* MAIN TASK OF R4S8CR INTERFACE.
- * @param:			None.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 NODE_status_t R4S8CR_task(void) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
@@ -278,23 +270,14 @@ NODE_status_t R4S8CR_task(void) {
 	if (r4s8cr_ctx.reply_size >= R4S8CR_REPLY_SIZE_BYTES) {
 		// Convert to ASCII.
 		string_status = STRING_byte_array_to_hexadecimal_string((uint8_t*) r4s8cr_ctx.reply, (uint8_t) r4s8cr_ctx.reply_size, 0, r4s8cr_frame);
-		STRING_status_check(NODE_ERROR_BASE_STRING);
+		STRING_check_status(NODE_ERROR_BASE_STRING);
 		// Print buffer.
-		AT_USB_print(r4s8cr_frame);
+		if (r4s8cr_ctx.print_callback != NULL) {
+			r4s8cr_ctx.print_callback(r4s8cr_frame);
+		}
 		// Flush buffers.
 		_R4S8CR_flush_buffers();
 	}
 errors:
 	return status;
-}
-
-/* FILL R4S8CR BUFFER WITH A NEW BYTE (CALLED BY LPUART INTERRUPT).
- * @param rx_byte:	Incoming byte.
- * @return:			None.
- */
-void R4S8CR_fill_rx_buffer(uint8_t rx_byte) {
-	// Store incoming byte.
-	r4s8cr_ctx.reply[r4s8cr_ctx.reply_size] = rx_byte;
-	// Manage index.
-	r4s8cr_ctx.reply_size = (r4s8cr_ctx.reply_size + 1) % R4S8CR_BUFFER_SIZE_BYTES;
 }

@@ -15,46 +15,65 @@
 
 /*** RCC local macros ***/
 
-#define RCC_TIMEOUT_COUNT				1000000
-#define RCC_MSI_RESET_FREQUENCY_KHZ		2100
+#define RCC_TIMEOUT_COUNT	1000000
 
 /*** RCC local global variables ***/
 
-static uint32_t rcc_sysclk_khz;
+static const uint32_t msi_range_frequency_khz[RCC_MSI_RANGE_LAST] = {65, 131, 262, 524, 1048, 2097, 4194};
+static uint32_t rcc_sysclk_khz = msi_range_frequency_khz[RCC_MSI_RANGE_5_2MHZ];
 
 /*** RCC local functions ***/
 
-/* RCC INTERRUPT HANDLER.
- * @param:	None.
- * @return:	None.
- */
-void RCC_IRQHandler(void) {
+/*******************************************************************/
+void __attribute__((optimize("-O0"))) RCC_IRQHandler(void) {
 	// Clear all flags.
 	RCC -> CICR |= (0b11 << 0);
 }
 
-/*** RCC functions ***/
-
-/* INIT RCC MODULE.
- * @param:	None.
- * @return:	None.
- */
-void RCC_init(void) {
-	// Default prescalers (HCLK, PCLK1 and PCLK2 must not exceed 32MHz).
-	// HCLK = SYSCLK = 16MHz (HPRE='0000').
-	// PCLK1 = HCLK = 16MHz (PPRE1='000').
-	// PCLK2 = HCLK = 16MHz (PPRE2='000').
-	// All peripherals clocked via the corresponding APBx line.
-	// Reset clock is MSI 2.1MHz.
-	rcc_sysclk_khz = RCC_MSI_RESET_FREQUENCY_KHZ;
-	// Enable LSI and LSE ready interrupts.
-	RCC -> CIER |= (0b11 << 0);
+/*******************************************************************/
+void _RCC_enable_lsi(void) {
+	// Enable LSI.
+	RCC -> CSR |= (0b1 << 0); // LSION='1'.
+	// Enable interrupt.
+	RCC -> CIER |= (0b1 << 0);
+	NVIC_enable_interrupt(NVIC_INTERRUPT_RCC_CRS, NVIC_PRIORTY_RCC_CRS);
+	// Wait for LSI to be stable.
+	while (((RCC -> CSR) & (0b1 << 1)) == 0) {
+		PWR_enter_sleep_mode();
+	}
+	NVIC_disable_interrupt(NVIC_INTERRUPT_RCC_CRS);
 }
 
-/* CONFIGURE AND USE HSI AS SYSTEM CLOCK (16MHz INTERNAL RC).
- * @param:			None.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
+void _RCC_enable_lse(void) {
+	// Enable LSE (32.768kHz crystal).
+	RCC -> CSR |= (0b1 << 8); // LSEON='1'.
+	// Enable interrupt.
+	RCC -> CIER |= (0b1 << 1);
+	NVIC_enable_interrupt(NVIC_INTERRUPT_RCC_CRS, NVIC_PRIORTY_RCC_CRS);
+	// Wait for LSE to be stable.
+	while (((RCC -> CSR) & (0b1 << 9)) == 0) {
+		PWR_enter_sleep_mode();
+	}
+	NVIC_disable_interrupt(NVIC_INTERRUPT_RCC_CRS);
+}
+
+/*** RCC functions ***/
+
+/*******************************************************************/
+void __attribute__((optimize("-O0"))) RCC_init(void) {
+	// Local variables.
+	uint8_t i = 0;
+	// Reset backup domain.
+	RCC -> CSR |= (0b1 << 19); // RTCRST='1'.
+	for (i=0 ; i<100 ; i++);
+	RCC -> CSR &= ~(0b1 << 19); // RTCRST='0'.
+	// Enable low speed oscillators.
+	_RCC_enable_lsi();
+	_RCC_enable_lse();
+}
+
+/*******************************************************************/
 RCC_status_t RCC_switch_to_hsi(void) {
 	// Local variables.
 	RCC_status_t status = RCC_SUCCESS;
@@ -62,8 +81,8 @@ RCC_status_t RCC_switch_to_hsi(void) {
 	uint32_t loop_count = 0;
 	// Set flash latency.
 	flash_status = FLASH_set_latency(1);
-	FLASH_status_check(RCC_ERROR_BASE_FLASH);
-	// Init HSI.
+	FLASH_check_status(RCC_ERROR_BASE_FLASH);
+	// Enable HSI.
 	RCC -> CR |= (0b1 << 0); // Enable HSI (HSI16ON='1').
 	// Wait for HSI to be stable.
 	while (((RCC -> CR) & (0b1 << 2)) == 0) {
@@ -88,49 +107,61 @@ RCC_status_t RCC_switch_to_hsi(void) {
 		}
 	}
 	// Disable MSI.
-	RCC -> CR &= ~(0b1 << 8); // Disable MSI (MSION='0').
-	// Update flag and frequency.
+	RCC -> CR &= ~(0b1 << 8); // MSION='0'.
+	// Update frequency.
 	rcc_sysclk_khz = RCC_HSI_FREQUENCY_KHZ;
 errors:
 	return status;
 }
 
-/* RETURN THE CURRENT SYSTEM CLOCK FREQUENCY.
- * @param:					None.
- * @return rcc_sysclk_khz:	Current system clock frequency in kHz.
- */
+/*******************************************************************/
+RCC_status_t RCC_switch_to_msi(RCC_msi_range_t msi_range) {
+	// Local variables.
+	RCC_status_t status = RCC_SUCCESS;
+	FLASH_status_t flash_status = FLASH_SUCCESS;
+	uint32_t loop_count = 0;
+	// Check parameter.
+	if (msi_range >= RCC_MSI_RANGE_LAST) {
+		status = RCC_ERROR_MSI_RANGE;
+		goto errors;
+	}
+	// Set frequency.
+	RCC -> ICSCR &= ~(0b111 << 13);
+	RCC -> ICSCR |= (msi_range << 13);
+	// Enable MSI.
+	RCC -> CR |= (0b1 << 8); // MSION='1'.
+	// Wait for MSI to be stable.
+	while (((RCC -> CR) & (0b1 << 9)) == 0) {
+		// Wait for MSIRDYF='1' or timeout.
+		loop_count++;
+		if (loop_count > RCC_TIMEOUT_COUNT) {
+			status = RCC_ERROR_MSI_READY;
+			goto errors;
+		}
+	}
+	// Switch SYSCLK.
+	RCC -> CFGR &= ~(0b11 << 0); // Use MSI as system clock (SW='00').
+	// Wait for clock switch.
+	while (((RCC -> CFGR) & (0b11 << 2)) != (0b00 << 2)) {
+		// Wait for SWS='00' or timeout.
+		loop_count++;
+		if (loop_count > RCC_TIMEOUT_COUNT) {
+			status = RCC_ERROR_MSI_SWITCH;
+			goto errors;
+		}
+	}
+	// Set flash latency.
+	flash_status = FLASH_set_latency(0);
+	FLASH_check_status(RCC_ERROR_BASE_FLASH);
+	// Disable HSI.
+	RCC -> CR &= ~(0b1 << 0); // HSI16ON='0'.
+	// Update frequency.
+	rcc_sysclk_khz = msi_range_frequency_khz[msi_range];
+errors:
+	return status;
+}
+
+/*******************************************************************/
 uint32_t RCC_get_sysclk_khz(void) {
 	return rcc_sysclk_khz;
-}
-
-/* ENABLE INTERNAL LOW SPEED OSCILLATOR (38kHz INTERNAL RC).
- * @param:	None.
- * @return:	None.
- */
-void RCC_enable_lsi(void) {
-	// Enable LSI.
-	RCC -> CSR |= (0b1 << 0); // LSION='1'.
-	// Enable interrupt.
-	NVIC_enable_interrupt(NVIC_INTERRUPT_RCC_CRS);
-	// Wait for LSI to be stable.
-	while (((RCC -> CSR) & (0b1 << 1)) == 0) {
-		PWR_enter_sleep_mode();
-	}
-	NVIC_disable_interrupt(NVIC_INTERRUPT_RCC_CRS);
-}
-
-/* ENABLE EXTERNAL LOW SPEED OSCILLATOR (32.768kHz QUARTZ).
- * @param:	None.
- * @return:	None.
- */
-void RCC_enable_lse(void) {
-	// Enable LSE (32.768kHz crystal).
-	RCC -> CSR |= (0b1 << 8); // LSEON='1'.
-	// Enable interrupt.
-	NVIC_enable_interrupt(NVIC_INTERRUPT_RCC_CRS);
-	// Wait for LSE to be stable.
-	while (((RCC -> CSR) & (0b1 << 9)) == 0) {
-		PWR_enter_sleep_mode();
-	}
-	NVIC_disable_interrupt(NVIC_INTERRUPT_RCC_CRS);
 }

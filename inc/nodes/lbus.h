@@ -8,43 +8,112 @@
 #ifndef __LBUS_H__
 #define __LBUS_H__
 
-#include "mode.h"
-#include "node.h"
 #include "lpuart.h"
+#include "node_common.h"
 #include "types.h"
 
 /*** LBUS macros ***/
 
-#define LBUS_BAUD_RATE				1200
 #define LBUS_ADDRESS_MASK			0x7F
 #define LBUS_ADDRESS_LAST			LBUS_ADDRESS_MASK
 #define LBUS_ADDRESS_SIZE_BYTES		1
 
 /*** LBUS structures ***/
 
+/*!******************************************************************
+ * \enum LBUS_status_t
+ * \brief LBUS driver error codes.
+ *******************************************************************/
+typedef enum {
+	LBUS_SUCCESS = 0,
+	LBUS_ERROR_ADDRESS,
+	LBUS_ERROR_MODE,
+	LBUS_ERROR_BASE_LPUART = 0x0100,
+	LBUS_ERROR_BASE_LAST = (LBUS_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
+} LBUS_status_t;
+
+/*!******************************************************************
+ * \enum LBUS_mode_t
+ * \brief LBUS modes list.
+ *******************************************************************/
 typedef enum {
 	LBUS_MODE_RAW = 0,
 	LBUS_MODE_DECODING,
 	LBUS_MODE_LAST
 } LBUS_mode_t;
 
+/*!******************************************************************
+ * \enum LBUS_frame_field_index_t
+ * \brief LBUS frame structure.
+ *******************************************************************/
 typedef enum {
 	LBUS_FRAME_FIELD_INDEX_DESTINATION_ADDRESS = 0,
 	LBUS_FRAME_FIELD_INDEX_SOURCE_ADDRESS = (LBUS_FRAME_FIELD_INDEX_DESTINATION_ADDRESS + LBUS_ADDRESS_SIZE_BYTES),
 	LBUS_FRAME_FIELD_INDEX_DATA = (LBUS_FRAME_FIELD_INDEX_SOURCE_ADDRESS + LBUS_ADDRESS_SIZE_BYTES)
 } LBUS_frame_field_index_t;
 
+/*!******************************************************************
+ * \fn LBUS_rx_irq_cb
+ * \brief LBUS RX interrupt callback.
+ *******************************************************************/
+typedef void (*LBUS_rx_irq_cb)(uint8_t data);
+
 /*** LBUS functions ***/
 
-void LBUS_init(void);
-NODE_status_t LBUS_configure_phy(void);
-NODE_status_t LBUS_set_mode(LBUS_mode_t mode);
-NODE_status_t LBUS_send(NODE_address_t destination_address, uint8_t* data, uint32_t data_size_bytes);
-void LBUS_reset(void);
-void LBUS_fill_rx_buffer(uint8_t rx_byte);
+/*!******************************************************************
+ * \fn void LBUS_init(LBUS_rx_irq_cb irq_callback)
+ * \brief Init LBUS interface.
+ * \param[in]  	irq_callback: Function to call on frame reception interrupt.
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
+void LBUS_init(LBUS_rx_irq_cb irq_callback);
 
-#define LBUS_status_check(error_base) { if (lbus_status != LBUS_SUCCESS) { status = error_base + lbus_status; goto errors; }}
-#define LBUS_error_check() { ERROR_status_check(lbus_status, LBUS_SUCCESS, ERROR_BASE_LBUS); }
-#define LBUS_error_check_print() { ERROR_status_check_print(lbus_status, LBUS_SUCCESS, ERROR_BASE_LBUS); }
+/*!******************************************************************
+ * \fn LBUS_status_t LBUS_configure_phy(void)
+ * \brief Configure RS485 physical interface for LBUS transfer.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
+LBUS_status_t LBUS_configure_phy(void);
+
+/*!******************************************************************
+ * \fn LBUS_status_t LBUS_set_mode(LBUS_mode_t mode)
+ * \brief Set LBUS transfer mode.
+ * \param[in]  	mode: Mode to set.
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
+LBUS_status_t LBUS_set_mode(LBUS_mode_t mode);
+
+/*!******************************************************************
+ * \fn LBUS_status_t LBUS_send(NODE_address_t destination_address, uint8_t* data, uint32_t data_size_bytes)
+ * \brief Send data over LBUS interface.
+ * \param[in]	destination_address: RS485 address of the destination node.
+ * \param[in]	data: Byte array to send.
+ * \param[in]	data_size_bytes: Number of bytes to send.
+ * \param[out] 	none
+ * \retval		Function execution status.
+ *******************************************************************/
+LBUS_status_t LBUS_send(NODE_address_t destination_address, uint8_t* data, uint32_t data_size_bytes);
+
+/*!******************************************************************
+ * \fn void LBUS_reset(void)
+ * \brief Reset LBUS interface.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		none
+ *******************************************************************/
+void LBUS_reset(void);
+
+/*******************************************************************/
+#define LBUS_check_status(error_base) { if (lbus_status != LBUS_SUCCESS) { status = error_base + lbus_status; goto errors; } }
+
+/*******************************************************************/
+#define LBUS_stack_error(void) { ERROR_stack_error(lbus_status, LBUS_SUCCESS, ERROR_BASE_LBUS); }
+
+/*******************************************************************/
+#define LBUS_print_error(void) { ERROR_print_error(lbus_status, LBUS_SUCCESS, ERROR_BASE_LBUS); }
 
 #endif /* __LBUS_H__ */

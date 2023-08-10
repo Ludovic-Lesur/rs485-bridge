@@ -9,9 +9,9 @@
 
 #include "exti.h"
 #include "gpio.h"
-#include "lptim.h"
 #include "lpuart_reg.h"
 #include "mapping.h"
+#include "node_common.h"
 #include "nvic.h"
 #include "rcc.h"
 #include "rcc_reg.h"
@@ -29,14 +29,11 @@
 
 /*** LPUART local global variables ***/
 
-static LPUART_rx_callback_t LPUART1_rx_callback;
+static LPUART_rx_irq_cb_t lpuart1_rx_irq_callback = NULL;
 
 /*** LPUART local functions ***/
 
-/* LPUART1 INTERRUPT HANDLER.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void LPUART1_IRQHandler(void) {
 	// Local variables.
 	uint8_t rx_byte = 0;
@@ -44,8 +41,9 @@ void LPUART1_IRQHandler(void) {
 	if (((LPUART1 -> ISR) & (0b1 << 5)) != 0) {
 		// Read incoming byte.
 		rx_byte = (LPUART1 -> RDR);
-		if (LPUART1_rx_callback != NULL) {
-			LPUART1_rx_callback(rx_byte);
+		// Transmit byte to upper layer.
+		if (lpuart1_rx_irq_callback != NULL) {
+			lpuart1_rx_irq_callback(rx_byte);
 		}
 		// Clear RXNE flag.
 		LPUART1 -> RQR |= (0b1 << 3);
@@ -58,10 +56,7 @@ void LPUART1_IRQHandler(void) {
 	EXTI_clear_flag(EXTI_LINE_LPUART1);
 }
 
-/* FILL LPUART1 TX BUFFER WITH A NEW BYTE.
- * @param tx_byte:	Byte to append.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 static LPUART_status_t _LPUART1_fill_tx_buffer(uint8_t tx_byte) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
@@ -81,10 +76,7 @@ errors:
 	return status;
 }
 
-/* FILL LPUART1 TX BUFFER WITH A NEW BYTE.
- * @param tx_byte:	Byte to append.
- * @return status:	Function execution status.
- */
+/*******************************************************************/
 static LPUART_status_t _LPUART1_set_baud_rate(uint32_t baud_rate) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
@@ -118,17 +110,24 @@ errors:
 
 /*** LPUART functions ***/
 
-/* CONFIGURE LPUART1.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void LPUART1_init(void) {
-	// Select HSI as clock default source.
-	RCC -> CR |= (0b1 << 1); // Enable HSI in stop mode (HSI16KERON='1').
-	RCC -> CCIPR |= (0b10 << 10); // LPUART1SEL='10'.
+	// Select LSE as clock source.
+	RCC -> CCIPR |= (0b11 << 10); // LPUART1SEL='11'.
 	// Enable peripheral clock.
 	RCC -> APB1ENR |= (0b1 << 18); // LPUARTEN='1'.
-	// Configure TX and RX GPIOs.
+	// Configure peripheral always in direct mode for reception.
+	LPUART1 -> CR1 |= 0x00000022;
+	LPUART1 -> CR3 |= 0x00B05000;
+	// Baud rate.
+	_LPUART1_set_baud_rate(LPUART_BAUD_RATE_DEFAULT);
+	// Configure interrupt.
+	EXTI_configure_line(EXTI_LINE_LPUART1, EXTI_TRIGGER_RISING_EDGE);
+	// Enable transmitter.
+	LPUART1 -> CR1 |= (0b1 << 3); // TE='1'.
+	// Enable peripheral.
+	LPUART1 -> CR1 |= (0b1 << 0); // UE='1'.
+	// Configure GPIOs.
 	GPIO_configure(&GPIO_LPUART1_TX, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	GPIO_configure(&GPIO_LPUART1_RX, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	GPIO_configure(&GPIO_LPUART1_DE, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE); // External pull-down resistor present.
@@ -140,28 +139,29 @@ void LPUART1_init(void) {
 	// Put NRE pin in high impedance since it is directly connected to the DE pin.
 	GPIO_configure(&GPIO_LPUART1_NRE, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 #endif
-	// Configure peripheral always in direct mode for reception.
-	LPUART1 -> CR1 |= 0x00000022;
-	LPUART1 -> CR3 |= 0x00B05000;
-	// Baud rate.
-	_LPUART1_set_baud_rate(LPUART_BAUD_RATE_DEFAULT);
-	// Configure interrupt.
-	NVIC_set_priority(NVIC_INTERRUPT_LPUART1, 0);
-	EXTI_configure_line(EXTI_LINE_LPUART1, EXTI_TRIGGER_RISING_EDGE);
-	// Enable transmitter.
-	LPUART1 -> CR1 |= (0b1 << 3); // TE='1'.
-	// Enable peripheral.
-	LPUART1 -> CR1 |= (0b1 << 0); // UE='1'.
 }
 
-/* ENABLE LPUART RX OPERATION.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
+void LPUART1_de_init(void) {
+	// Disable LPUART alternate function.
+	GPIO_configure(&GPIO_LPUART1_TX, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_configure(&GPIO_LPUART1_RX, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_configure(&GPIO_LPUART1_DE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+#ifdef LPUART_USE_NRE
+	GPIO_configure(&GPIO_LPUART1_NRE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_write(&GPIO_LPUART1_NRE, 0);
+#endif
+	// Disable peripheral.
+	LPUART1 -> CR1 &= ~(0b1 << 0); // UE='0'.
+	// Disable peripheral clock.
+	RCC -> APB1ENR &= ~(0b1 << 18); // LPUARTEN='0'.
+}
+
+/*******************************************************************/
 void LPUART1_enable_rx(void) {
 	// Clear flag and enable interrupt.
 	LPUART1 -> RQR |= (0b1 << 3);
-	NVIC_enable_interrupt(NVIC_INTERRUPT_LPUART1);
+	NVIC_enable_interrupt(NVIC_INTERRUPT_LPUART1, NVIC_PRIORITY_LPUART1);
 	// Enable receiver.
 	LPUART1 -> CR1 |= (0b1 << 2); // RE='1'.
 #ifdef LPUART_USE_NRE
@@ -169,10 +169,7 @@ void LPUART1_enable_rx(void) {
 #endif
 }
 
-/* DISABLE LPUART RX OPERATION.
- * @param:	None.
- * @return:	None.
- */
+/*******************************************************************/
 void LPUART1_disable_rx(void) {
 	// Disable receiver.
 #ifdef LPUART_USE_NRE
@@ -183,11 +180,8 @@ void LPUART1_disable_rx(void) {
 	NVIC_disable_interrupt(NVIC_INTERRUPT_LPUART1);
 }
 
-/* CONFIGURE LPUART PARAMETERS.
- * @param config:		Pointer to the LPUART configuration structure.
- * @return status:		Function execution status.
- */
-LPUART_status_t LPUART1_configure(LPUART_config_t* config) {
+/*******************************************************************/
+LPUART_status_t LPUART1_configure(LPUART_configuration_t* config) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
 	// Check parameters.
@@ -200,32 +194,27 @@ LPUART_status_t LPUART1_configure(LPUART_config_t* config) {
 	// Set baud rate.
 	status = _LPUART1_set_baud_rate(config -> baud_rate);
 	if (status != LPUART_SUCCESS) goto errors;
-	// Store callback (even if NULL).
-	LPUART1_rx_callback = (config -> rx_callback);
+	// Register callback.
+	lpuart1_rx_irq_callback = (config -> rx_callback);
 errors:
 	// Enable peripheral.
 	LPUART1 -> CR1 |= (0b1 << 0); // UE='1'.
 	return status;
 }
 
-/* SEND DATA OVER LPUART.
- * @param data:				Data buffer to send.
- * @param data_size_bytes:	Number of bytes to send.
- * @return status:			Function execution status.
- */
-LPUART_status_t LPUART1_send(uint8_t* data, uint8_t data_size_bytes) {
+/*******************************************************************/
+LPUART_status_t LPUART1_write(uint8_t* data, uint32_t data_size_bytes) {
 	// Local variables.
 	LPUART_status_t status = LPUART_SUCCESS;
-	uint8_t idx = 0;
+	uint32_t idx = 0;
 	uint32_t loop_count = 0;
-	// Check parameters.
+	// Check parameter.
 	if (data == NULL) {
 		status = LPUART_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
-	// Bytes loop.
+	// Fill TX buffer with new bytes.
 	for (idx=0 ; idx<data_size_bytes ; idx++) {
-		// Fill buffer.
 		status = _LPUART1_fill_tx_buffer(data[idx]);
 		if (status != LPUART_SUCCESS) goto errors;
 	}

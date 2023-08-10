@@ -10,6 +10,10 @@
 
 /*** CONFIG structures ***/
 
+/*!******************************************************************
+ * \enum CONFIG_tx_mode_t
+ * \brief Board TX modes.
+ *******************************************************************/
 typedef enum {
 	CONFIG_TX_ENABLED,
 	CONFIG_TX_DISABLED,
@@ -18,7 +22,13 @@ typedef enum {
 
 /*** CONFIG functions ***/
 
-void CONFIG_init(void);
+/*!******************************************************************
+ * \fn CONFIG_tx_mode_t CONFIG_get_tx_mode(void)
+ * \brief Get TX mode DIP switch configuration.
+ * \param[in]  	none
+ * \param[out] 	none
+ * \retval		Current TX mode.
+ *******************************************************************/
 CONFIG_tx_mode_t CONFIG_get_tx_mode(void);
 
 #endif /* __CONFIG_H__ */
