@@ -35,7 +35,7 @@ void __attribute__((optimize("-O0"))) USART2_IRQHandler(void) {
 	if (((USART2 -> ISR) & (0b1 << 5)) != 0) {
 		// Read incoming byte.
 		rx_byte = (USART2 -> RDR);
-		// Call callback.
+		// Transmit byte to upper layer.
 		if ((((USART2 -> CR1) & (0b1 << 5)) != 0) && (usart2_rx_irq_callback != NULL)) {
 			usart2_rx_irq_callback(rx_byte);
 		}
@@ -56,9 +56,12 @@ void __attribute__((optimize("-O0"))) USART2_IRQHandler(void) {
 void USART2_init(USART_rx_irq_cb_t irq_callback) {
 	// Local variables.
 	uint32_t brr = 0;
+	// Select HSI as peripheral clock.
+	RCC -> CCIPR &= ~(0b11 << 2); // Reset bits 2-3.
+	RCC -> CCIPR |= (0b10 << 2); // USART2SEL='10'.
+	// Enable HSI in stop mode.
+	RCC -> CR |= (0b1 << 1); // HSI16KERON='1'.
 	// Enable peripheral clock.
-	RCC -> CR |= (0b1 << 1); // Enable HSI in stop mode (HSI16KERON='1').
-	RCC -> CCIPR |= (0b10 << 2); // Select HSI as USART clock.
 	RCC -> APB1ENR |= (0b1 << 17); // USART2EN='1'.
 	RCC -> APB1SMENR |= (0b1 << 17); // Enable clock in sleep mode.
 	// Configure peripheral.
@@ -77,6 +80,17 @@ void USART2_init(USART_rx_irq_cb_t irq_callback) {
 	GPIO_configure(&GPIO_USART2_RX, GPIO_MODE_ALTERNATE_FUNCTION, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 	// Register callback.
 	usart2_rx_irq_callback = irq_callback;
+}
+
+/*******************************************************************/
+void USART2_de_init(void) {
+	// Disable USART alternate function.
+	GPIO_configure(&GPIO_USART2_TX, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	GPIO_configure(&GPIO_USART2_RX, GPIO_MODE_ANALOG, GPIO_TYPE_OPEN_DRAIN, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+	// Disable peripheral.
+	USART2 -> CR1 &= ~(0b1 << 0); // UE='0'.
+	// Disable peripheral clock.
+	RCC -> APB1ENR &= ~(0b1 << 17); // USART2EN='0'.
 }
 
 /*******************************************************************/

@@ -55,11 +55,14 @@ typedef enum {
  * \brief NVIC interrupt priorities list.
  *******************************************************************/
 typedef enum {
+	// Common.
 	NVIC_PRIORTY_RCC_CRS = 0,
-	NVIC_PRIORITY_LPUART1 = 0,
-	NVIC_PRIORITY_USART2 = 1,
 	NVIC_PRIORITY_LPTIM1 = 2,
-	NVIC_PRIORITY_RTC = 3
+	NVIC_PRIORITY_RTC = 3,
+	// RS485 interface.
+	NVIC_PRIORITY_LPUART1 = 0,
+	// AT interface.
+	NVIC_PRIORITY_USART2 = 1
 } NVIC_priority_list_t;
 
 /*** NVIC functions ***/
