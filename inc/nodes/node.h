@@ -142,12 +142,9 @@ NODE_status_t NODE_scan(void);
 NODE_status_t NODE_send_command(NODE_command_parameters_t* command_params);
 
 /*******************************************************************/
-#define NODE_check_status(error_base) { if (node_status != NODE_SUCCESS) { status = error_base + node_status; goto errors; } }
+#define NODE_exit_error(error_base) { if (node_status != NODE_SUCCESS) { status = (error_base + node_status); goto errors; } }
 
 /*******************************************************************/
-#define NODE_stack_error(void) { ERROR_stack_error(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
-
-/*******************************************************************/
-#define NODE_print_error(void) { ERROR_print_error(node_status, NODE_SUCCESS, ERROR_BASE_NODE); }
+#define NODE_stack_error(void) { if (node_status != NODE_SUCCESS) { ERROR_stack_add(ERROR_BASE_NODE + node_status); } }
 
 #endif /* __NODE_H__ */

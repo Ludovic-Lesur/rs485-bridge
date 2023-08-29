@@ -99,7 +99,7 @@ static const AT_USB_command_t AT_USB_COMMAND_LIST[] = {
 	{PARSER_MODE_COMMAND, "AT$ADC?", STRING_NULL, "Get ADC measurements", _AT_USB_adc_callback},
 	{PARSER_MODE_COMMAND, "AT$SCAN", STRING_NULL, "Scan all slaves connected to the RS485 bus", _AT_USB_node_scan_callback},
 	{PARSER_MODE_COMMAND, "AT$PR?", STRING_NULL, "Get current node protocol", _AT_USB_node_get_protocol_callback},
-	{PARSER_MODE_HEADER, "AT$PR=", "protocol[dec]", "Set node protocol (0=None, 1=AT_BUS, 2=R4S8CR)", _AT_USB_node_set_protocol_callback},
+	{PARSER_MODE_HEADER, "AT$PR=", "protocol[dec]", "Set node protocol (0=None, 1=AT_USB, 2=R4S8CR)", _AT_USB_node_set_protocol_callback},
 	{PARSER_MODE_COMMAND, "AT$BR?", STRING_NULL, "Get baud_rate used in none protocol mode", _AT_USB_node_get_baud_rate_callback},
 	{PARSER_MODE_HEADER, "AT$BR=", "baud_rate[dec]", "Set baud rate used in none protocol mode", _AT_USB_node_set_baud_rate_callback},
 	{PARSER_MODE_HEADER, AT_USB_NODE_TRANSFER_HEADER, "node_addr[hex],command[str]", "Send node command", _AT_USB_node_command_callback},
@@ -108,6 +108,14 @@ static const AT_USB_command_t AT_USB_COMMAND_LIST[] = {
 static AT_USB_context_t at_usb_ctx;
 
 /*** AT local functions ***/
+
+/*******************************************************************/
+#define _AT_USB_check_status(status, success, base) { \
+	if (status != success) { \
+		_AT_USB_print_error(base + status); \
+		goto errors; \
+	} \
+}
 
 /*******************************************************************/
 #define _AT_USB_reply_add_char(character) { \
@@ -191,7 +199,7 @@ static void _AT_USB_print_ok(void) {
 }
 
 /*******************************************************************/
-static void _AT_USB_print_error(ERROR_t error) {
+static void _AT_USB_print_error(ERROR_code_t error) {
 	// Add error to stack.
 	ERROR_stack_add(error);
 	// Print error.
@@ -246,7 +254,7 @@ static void _AT_USB_print_sw_version(void) {
 /*******************************************************************/
 static void _AT_USB_print_error_stack(void) {
 	// Local variables.
-	ERROR_t error = SUCCESS;
+	ERROR_code_t error = SUCCESS;
 	// Read stack.
 	if (ERROR_stack_is_empty() != 0) {
 		_AT_USB_reply_add_string("Error stack empty");
@@ -279,37 +287,37 @@ static void _AT_USB_adc_callback(void) {
 	_AT_USB_reply_add_string("ADC running...");
 	_AT_USB_reply_send();
 	power_status = POWER_enable(POWER_DOMAIN_ANALOG, LPTIM_DELAY_MODE_ACTIVE);
-	POWER_print_error();
+	_AT_USB_check_status(power_status, POWER_SUCCESS, ERROR_BASE_POWER);
 	adc1_status = ADC1_perform_measurements();
-	ADC1_print_error();
+	_AT_USB_check_status(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1);
 	power_status = POWER_disable(POWER_DOMAIN_ANALOG);
-	POWER_print_error();
+	_AT_USB_check_status(power_status, POWER_SUCCESS, ERROR_BASE_POWER);
 	// Read and print data.
 	// USB voltage.
 	_AT_USB_reply_add_string("Vusb=");
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VUSB_MV, &voltage_mv);
-	ADC1_print_error();
+	_AT_USB_check_status(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1);
 	_AT_USB_reply_add_value((int32_t) voltage_mv, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string("mV");
 	_AT_USB_reply_send();
 	// RS bus voltage.
 	_AT_USB_reply_add_string("Vrs=");
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VRS_MV, &voltage_mv);
-	ADC1_print_error();
+	_AT_USB_check_status(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1);
 	_AT_USB_reply_add_value((int32_t) voltage_mv, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string("mV");
 	_AT_USB_reply_send();
 	// MCU voltage.
 	_AT_USB_reply_add_string("Vmcu=");
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VMCU_MV, &voltage_mv);
-	ADC1_print_error();
+	_AT_USB_check_status(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1);
 	_AT_USB_reply_add_value((int32_t) voltage_mv, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string("mV");
 	_AT_USB_reply_send();
 	// MCU temperature.
 	_AT_USB_reply_add_string("Tmcu=");
 	adc1_status = ADC1_get_tmcu(&tmcu_degrees);
-	ADC1_print_error();
+	_AT_USB_check_status(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1);
 	_AT_USB_reply_add_value((int32_t) tmcu_degrees, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string("dC");
 	_AT_USB_reply_send();
@@ -327,7 +335,7 @@ static void _AT_USB_node_scan_callback(void) {
 	_AT_USB_reply_add_string("Nodes scan running...");
 	_AT_USB_reply_send();
 	node_status = NODE_scan();
-	NODE_print_error();
+	_AT_USB_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
 	// Print list.
 	_AT_USB_reply_add_value((int32_t) NODES_LIST.count, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string(" node(s) found");
@@ -387,10 +395,10 @@ static void _AT_USB_node_set_protocol_callback(void) {
 	int32_t protocol = NODE_PROTOCOL_AT_BUS;
 	// Parse node address.
 	parser_status = PARSER_get_parameter(&at_usb_ctx.parser, STRING_FORMAT_DECIMAL, STRING_CHAR_NULL, &protocol);
-	PARSER_print_error();
+	_AT_USB_check_status(parser_status, PARSER_SUCCESS, ERROR_BASE_PARSER);
 	// Set protocol.
 	node_status = NODE_set_protocol((NODE_protocol_t) protocol);
-	NODE_print_error();
+	_AT_USB_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
 	_AT_USB_print_ok();
 errors:
 	return;
@@ -412,10 +420,10 @@ static void _AT_USB_node_set_baud_rate_callback(void) {
 	int32_t baud_rate = 0;
 	// Parse node address.
 	parser_status = PARSER_get_parameter(&at_usb_ctx.parser, STRING_FORMAT_DECIMAL, STRING_CHAR_NULL, &baud_rate);
-	PARSER_print_error();
+	_AT_USB_check_status(parser_status, PARSER_SUCCESS, ERROR_BASE_PARSER);
 	// Set protocol.
 	node_status = NODE_set_baud_rate((uint32_t) baud_rate);
-	NODE_print_error();
+	_AT_USB_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
 	_AT_USB_print_ok();
 errors:
 	return;
@@ -436,7 +444,7 @@ static void _AT_USB_node_command_callback(void) {
 	}
 	// Parse node address.
 	parser_status = PARSER_get_parameter(&at_usb_ctx.parser, STRING_FORMAT_HEXADECIMAL, AT_USB_CHAR_SEPARATOR, &node_addr);
-	PARSER_print_error();
+	_AT_USB_check_status(parser_status, PARSER_SUCCESS, ERROR_BASE_PARSER);
 	// Set command offset.
 	command_offset = at_usb_ctx.parser.separator_idx + 1;
 	// Update parameters.
@@ -451,7 +459,7 @@ static void _AT_USB_node_command_callback(void) {
 	_AT_USB_reply_send();
 	// Perform read operation.
 	node_status = NODE_send_command(&command_params);
-	NODE_print_error();
+	_AT_USB_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
 errors:
 	return;
 }
@@ -510,7 +518,7 @@ void AT_USB_init(void) {
 	}
 	at_usb_ctx.none_protocol_buf_write_idx = 0;
 	at_usb_ctx.none_protocol_buf_read_idx = 0;
-	// Init nodes layer in AT_BUS mode by default.
+	// Init nodes layer in AT_USB mode by default.
 	NODE_init(&_AT_USB_print, &_AT_USB_fill_none_protocol_buffer);
 	NODE_set_protocol(NODE_PROTOCOL_AT_BUS);
 	// Init USART and enable commands on USB side.
@@ -532,9 +540,9 @@ void AT_USB_task(void) {
 	}
 	// Perform continuous listening task.
 	node_status = AT_BUS_task();
-	NODE_print_error();
+	_AT_USB_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
 	node_status = R4S8CR_task();
-	NODE_print_error();
+	_AT_USB_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
 	// Check none protocol buffer.
 	while (at_usb_ctx.none_protocol_buf_write_idx != at_usb_ctx.none_protocol_buf_read_idx) {
 		// Send byte over UART.
