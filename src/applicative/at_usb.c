@@ -113,6 +113,7 @@ static AT_USB_context_t at_usb_ctx;
 #define _AT_USB_check_status(status, success, base) { \
 	if (status != success) { \
 		_AT_USB_print_error(base + status); \
+		ERROR_stack_add(base + status); \
 		goto errors; \
 	} \
 }
