@@ -130,7 +130,7 @@ static NODE_status_t _R4S8CR_read_relays_state(uint8_t relay_box_id, uint32_t ti
 		}
 	}
 errors:
-	LPUART1_disable_rx();
+	LPUART1_enable_rx();
 	return status;
 }
 
@@ -214,9 +214,9 @@ NODE_status_t R4S8CR_send_command(NODE_command_parameters_t* command_params) {
 	// Send command.
 	lpuart1_status = LPUART1_write(r4s8cr_ctx.command, r4s8cr_ctx.command_size);
 	LPUART1_exit_error(NODE_ERROR_BASE_LPUART);
+errors:
 	// Enable reception.
 	LPUART1_enable_rx();
-errors:
 	return status;
 }
 

@@ -251,9 +251,9 @@ NODE_status_t AT_BUS_send_command(NODE_command_parameters_t* command_params) {
 	// Send command.
 	lbus_status = LBUS_send((command_params -> node_addr), (uint8_t*) at_bus_ctx.command, at_bus_ctx.command_size);
 	LBUS_exit_error(NODE_ERROR_BASE_LBUS);
+errors:
 	// Enable receiver.
 	LPUART1_enable_rx();
-errors:
 	return status;
 }
 
@@ -374,10 +374,6 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 		if ((*nodes_count) >= nodes_list_size) break;
 		IWDG_reload();
 	}
-	// Go back to raw mode.
-	LBUS_reset();
-	LBUS_set_mode(LBUS_MODE_RAW);
-	return NODE_SUCCESS;
 errors:
 	// Go back to raw mode.
 	LBUS_reset();
