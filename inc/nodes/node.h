@@ -147,4 +147,7 @@ NODE_status_t NODE_send_command(NODE_command_parameters_t* command_params);
 /*******************************************************************/
 #define NODE_stack_error(void) { if (node_status != NODE_SUCCESS) { ERROR_stack_add(ERROR_BASE_NODE + node_status); } }
 
+/*******************************************************************/
+#define NODE_stack_exit_error(error_code) { if (node_status != NODE_SUCCESS) { ERROR_stack_add(ERROR_BASE_NODE + node_status); status = error_code; goto errors; } }
+
 #endif /* __NODE_H__ */

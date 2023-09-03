@@ -10,6 +10,7 @@
 
 // Peripherals.
 #include "adc.h"
+#include "flash.h"
 #include "iwdg.h"
 #include "lptim.h"
 #include "lpuart.h"

@@ -110,15 +110,6 @@ static AT_USB_context_t at_usb_ctx;
 /*** AT local functions ***/
 
 /*******************************************************************/
-#define _AT_USB_check_status(status, success, base) { \
-	if (status != success) { \
-		_AT_USB_print_error(base + status); \
-		ERROR_stack_add(base + status); \
-		goto errors; \
-	} \
-}
-
-/*******************************************************************/
 #define _AT_USB_reply_add_char(character) { \
 	at_usb_ctx.reply[at_usb_ctx.reply_size] = character; \
 	at_usb_ctx.reply_size = (at_usb_ctx.reply_size + 1) % AT_USB_REPLY_BUFFER_SIZE; \
@@ -201,8 +192,6 @@ static void _AT_USB_print_ok(void) {
 
 /*******************************************************************/
 static void _AT_USB_print_error(ERROR_code_t error) {
-	// Add error to stack.
-	ERROR_stack_add(error);
 	// Print error.
 	_AT_USB_reply_add_string("ERROR_");
 	if (error < 0x0100) {
@@ -280,6 +269,7 @@ static void _AT_USB_print_error_stack(void) {
 /*******************************************************************/
 static void _AT_USB_adc_callback(void) {
 	// Local variables.
+	ERROR_code_t status = SUCCESS;
 	ADC_status_t adc1_status = ADC_SUCCESS;
 	POWER_status_t power_status = POWER_SUCCESS;
 	uint32_t voltage_mv = 0;
@@ -288,55 +278,61 @@ static void _AT_USB_adc_callback(void) {
 	_AT_USB_reply_add_string("ADC running...");
 	_AT_USB_reply_send();
 	power_status = POWER_enable(POWER_DOMAIN_ANALOG, LPTIM_DELAY_MODE_ACTIVE);
-	_AT_USB_check_status(power_status, POWER_SUCCESS, ERROR_BASE_POWER);
+	POWER_stack_exit_error(ERROR_BASE_POWER + power_status);
 	adc1_status = ADC1_perform_measurements();
-	_AT_USB_check_status(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1);
+	ADC1_stack_exit_error(ERROR_BASE_ADC1 + adc1_status);
 	power_status = POWER_disable(POWER_DOMAIN_ANALOG);
-	_AT_USB_check_status(power_status, POWER_SUCCESS, ERROR_BASE_POWER);
+	POWER_stack_exit_error(ERROR_BASE_POWER + power_status);
 	// Read and print data.
 	// USB voltage.
 	_AT_USB_reply_add_string("Vusb=");
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VUSB_MV, &voltage_mv);
-	_AT_USB_check_status(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1);
+	ADC1_stack_exit_error(ERROR_BASE_ADC1 + adc1_status);
 	_AT_USB_reply_add_value((int32_t) voltage_mv, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string("mV");
 	_AT_USB_reply_send();
 	// RS bus voltage.
 	_AT_USB_reply_add_string("Vrs=");
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VRS_MV, &voltage_mv);
-	_AT_USB_check_status(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1);
+	ADC1_stack_exit_error(ERROR_BASE_ADC1 + adc1_status);
 	_AT_USB_reply_add_value((int32_t) voltage_mv, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string("mV");
 	_AT_USB_reply_send();
 	// MCU voltage.
 	_AT_USB_reply_add_string("Vmcu=");
 	adc1_status = ADC1_get_data(ADC_DATA_INDEX_VMCU_MV, &voltage_mv);
-	_AT_USB_check_status(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1);
+	ADC1_stack_exit_error(ERROR_BASE_ADC1 + adc1_status);
 	_AT_USB_reply_add_value((int32_t) voltage_mv, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string("mV");
 	_AT_USB_reply_send();
 	// MCU temperature.
 	_AT_USB_reply_add_string("Tmcu=");
 	adc1_status = ADC1_get_tmcu(&tmcu_degrees);
-	_AT_USB_check_status(adc1_status, ADC_SUCCESS, ERROR_BASE_ADC1);
+	ADC1_stack_exit_error(ERROR_BASE_ADC1 + adc1_status);
 	_AT_USB_reply_add_value((int32_t) tmcu_degrees, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string("dC");
 	_AT_USB_reply_send();
 	_AT_USB_print_ok();
+	return;
 errors:
+	// Turn analog front-end off.
+	POWER_disable(POWER_DOMAIN_ANALOG);
+	// Print error.
+	_AT_USB_print_error(status);
 	return;
 }
 
 /*******************************************************************/
 static void _AT_USB_node_scan_callback(void) {
 	// Local variables.
+	ERROR_code_t status = SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	uint8_t idx = 0;
 	// Perform bus scan.
 	_AT_USB_reply_add_string("Nodes scan running...");
 	_AT_USB_reply_send();
 	node_status = NODE_scan();
-	_AT_USB_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
+	NODE_stack_exit_error(ERROR_BASE_NODE + node_status);
 	// Print list.
 	_AT_USB_reply_add_value((int32_t) NODES_LIST.count, STRING_FORMAT_DECIMAL, 0);
 	_AT_USB_reply_add_string(" node(s) found");
@@ -362,7 +358,9 @@ static void _AT_USB_node_scan_callback(void) {
 		_AT_USB_reply_send();
 	}
 	_AT_USB_print_ok();
+	return;
 errors:
+	_AT_USB_print_error(status);
 	return;
 }
 
@@ -391,17 +389,20 @@ static void _AT_USB_node_get_protocol_callback(void) {
 /*******************************************************************/
 static void _AT_USB_node_set_protocol_callback(void) {
 	// Local variables.
+	ERROR_code_t status = SUCCESS;
 	PARSER_status_t parser_status = PARSER_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	int32_t protocol = NODE_PROTOCOL_AT_BUS;
 	// Parse node address.
 	parser_status = PARSER_get_parameter(&at_usb_ctx.parser, STRING_FORMAT_DECIMAL, STRING_CHAR_NULL, &protocol);
-	_AT_USB_check_status(parser_status, PARSER_SUCCESS, ERROR_BASE_PARSER);
+	PARSER_stack_exit_error(ERROR_BASE_PARSER + parser_status);
 	// Set protocol.
 	node_status = NODE_set_protocol((NODE_protocol_t) protocol);
-	_AT_USB_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
+	NODE_stack_exit_error(ERROR_BASE_NODE + node_status);
 	_AT_USB_print_ok();
+	return;
 errors:
+	_AT_USB_print_error(status);
 	return;
 }
 
@@ -416,23 +417,27 @@ static void _AT_USB_node_get_baud_rate_callback(void) {
 /*******************************************************************/
 static void _AT_USB_node_set_baud_rate_callback(void) {
 	// Local variables.
+	ERROR_code_t status = SUCCESS;
 	PARSER_status_t parser_status = PARSER_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	int32_t baud_rate = 0;
 	// Parse node address.
 	parser_status = PARSER_get_parameter(&at_usb_ctx.parser, STRING_FORMAT_DECIMAL, STRING_CHAR_NULL, &baud_rate);
-	_AT_USB_check_status(parser_status, PARSER_SUCCESS, ERROR_BASE_PARSER);
+	PARSER_stack_exit_error(ERROR_BASE_PARSER + parser_status);
 	// Set protocol.
 	node_status = NODE_set_baud_rate((uint32_t) baud_rate);
-	_AT_USB_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
+	NODE_stack_exit_error(ERROR_BASE_NODE + node_status);
 	_AT_USB_print_ok();
+	return;
 errors:
+	_AT_USB_print_error(status);
 	return;
 }
 
 /*******************************************************************/
 static void _AT_USB_node_command_callback(void) {
 	// Local variables.
+	ERROR_code_t status = SUCCESS;
 	PARSER_status_t parser_status = PARSER_SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	NODE_command_parameters_t command_params;
@@ -445,7 +450,7 @@ static void _AT_USB_node_command_callback(void) {
 	}
 	// Parse node address.
 	parser_status = PARSER_get_parameter(&at_usb_ctx.parser, STRING_FORMAT_HEXADECIMAL, AT_USB_CHAR_SEPARATOR, &node_addr);
-	_AT_USB_check_status(parser_status, PARSER_SUCCESS, ERROR_BASE_PARSER);
+	PARSER_stack_exit_error(ERROR_BASE_PARSER + parser_status);
 	// Set command offset.
 	command_offset = at_usb_ctx.parser.separator_idx + 1;
 	// Update parameters.
@@ -460,8 +465,10 @@ static void _AT_USB_node_command_callback(void) {
 	_AT_USB_reply_send();
 	// Perform read operation.
 	node_status = NODE_send_command(&command_params);
-	_AT_USB_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
+	NODE_stack_exit_error(ERROR_BASE_NODE + node_status);
+	return;
 errors:
+	_AT_USB_print_error(status);
 	return;
 }
 
@@ -530,6 +537,7 @@ void AT_USB_init(void) {
 /*******************************************************************/
 void AT_USB_task(void) {
 	// Local variables.
+	ERROR_code_t status = SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	USART_status_t usart2_status = USART_SUCCESS;
 	// Trigger decoding function if line end found.
@@ -541,9 +549,9 @@ void AT_USB_task(void) {
 	}
 	// Perform continuous listening task.
 	node_status = AT_BUS_task();
-	_AT_USB_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
+	NODE_stack_exit_error(ERROR_BASE_NODE + node_status);
 	node_status = R4S8CR_task();
-	_AT_USB_check_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
+	NODE_stack_exit_error(ERROR_BASE_NODE + node_status);
 	// Check none protocol buffer.
 	while (at_usb_ctx.none_protocol_buf_write_idx != at_usb_ctx.none_protocol_buf_read_idx) {
 		// Send byte over UART.
@@ -552,7 +560,9 @@ void AT_USB_task(void) {
 		// Increment read index.
 		at_usb_ctx.none_protocol_buf_read_idx = (at_usb_ctx.none_protocol_buf_read_idx + 1) % AT_USB_NONE_PROTOCOL_BUFFER_SIZE;
 	}
+	return;
 errors:
+	_AT_USB_print_error(status);
 	return;
 }
 
