@@ -328,6 +328,11 @@ static void _AT_USB_node_scan_callback(void) {
 	ERROR_code_t status = SUCCESS;
 	NODE_status_t node_status = NODE_SUCCESS;
 	uint8_t idx = 0;
+	// Check if TX is allowed.
+	if (CONFIG_get_tx_mode() == CONFIG_TX_DISABLED) {
+		status = ERROR_TX_DISABLED;
+		goto errors;
+	}
 	// Perform bus scan.
 	_AT_USB_reply_add_string("Nodes scan running...");
 	_AT_USB_reply_send();
@@ -445,7 +450,7 @@ static void _AT_USB_node_command_callback(void) {
 	uint8_t command_offset = 0;
 	// Check if TX is allowed.
 	if (CONFIG_get_tx_mode() == CONFIG_TX_DISABLED) {
-		_AT_USB_print_error(ERROR_TX_DISABLED);
+		status = ERROR_TX_DISABLED;
 		goto errors;
 	}
 	// Parse node address.
