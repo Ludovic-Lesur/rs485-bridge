@@ -117,7 +117,7 @@ static AT_USB_context_t at_usb_ctx;
 
 /*******************************************************************/
 static void _AT_USB_fill_rx_buffer(uint8_t rx_byte) {
-	// Append byte if line end flag is not allready set.
+	// Append byte if line end flag is not already set.
 	if (at_usb_ctx.line_end_flag == 0) {
 		// Check ending characters.
 		if ((rx_byte == STRING_CHAR_CR) || (rx_byte == STRING_CHAR_LF)) {
