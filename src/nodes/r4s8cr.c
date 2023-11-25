@@ -38,7 +38,8 @@
 #define R4S8CR_REPLY_HEADER_SIZE				(R4S8CR_ADDRESS_SIZE_BYTES + R4S8CR_RELAY_ADDRESS_SIZE_BYTES)
 #define R4S8CR_REPLY_SIZE_BYTES					(R4S8CR_REPLY_HEADER_SIZE + R4S8CR_NUMBER_OF_RELAYS)
 
-#define R4S8CR_DEFAULT_TIMEOUT_MS				100
+#define R4S8CR_READ_TIMEOUT_MS					200
+#define R4S8CR_WRITE_TIMEOUT_MS					1000
 
 /*** R4S8CR local structures ***/
 
@@ -254,7 +255,7 @@ NODE_status_t R4S8CR_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	// Build read input common parameters.
 	read_params.reg_addr = R4S8CR_REG_ADDR_STATUS;
 	read_params.reply_params.type = NODE_REPLY_TYPE_VALUE;
-	read_params.reply_params.timeout_ms = R4S8CR_DEFAULT_TIMEOUT_MS;
+	read_params.reply_params.timeout_ms = R4S8CR_READ_TIMEOUT_MS;
 	// Loop on all addresses.
 	for (node_addr=DINFOX_NODE_ADDRESS_R4S8CR_START ; node_addr<(DINFOX_NODE_ADDRESS_R4S8CR_START + DINFOX_NODE_ADDRESS_RANGE_R4S8CR) ; node_addr++) {
 		// Update read parameters.
