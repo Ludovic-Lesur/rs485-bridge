@@ -9,6 +9,7 @@
 
 #include "common_reg.h"
 #include "dinfox.h"
+#include "error.h"
 #include "gpio.h"
 #include "iwdg.h"
 #include "lbus.h"
@@ -143,9 +144,9 @@ static NODE_status_t _AT_BUS_wait_reply(NODE_reply_parameters_t* reply_params, u
 		goto errors;
 	}
 	// Reset status.
-	(reply_status -> all) = 0;
+	(reply_status -> flags) = 0;
 	// Directly exit function with success status for none reply type.
-	if ((reply_params-> type) == NODE_REPLY_TYPE_NONE) goto errors;
+	if ((reply_params -> type) == NODE_REPLY_TYPE_NONE) goto errors;
 	// Main reception loop.
 	while (1) {
 		// Delay.
@@ -181,7 +182,7 @@ static NODE_status_t _AT_BUS_wait_reply(NODE_reply_parameters_t* reply_params, u
 				// Check status.
 				if (parser_status == PARSER_SUCCESS) {
 					// Update raw pointer, status and exit.
-					(reply_status -> all) = 0;
+					(reply_status -> flags) = 0;
 					break;
 				}
 				// Check error.
@@ -258,7 +259,7 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status) {
+NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint32_t reg_value, uint32_t reg_mask, NODE_access_status_t* write_status, uint8_t access_error_stack) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
@@ -272,6 +273,9 @@ NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint
 		status = NODE_ERROR_NULL_PARAMETER;
 		goto errors;
 	}
+	// Reset access status.
+	(write_status -> all) = 0;
+	(write_status -> type) = NODE_ACCESS_TYPE_WRITE;
 	// Build command structure.
 	command_params.node_addr = (write_params -> node_addr);
 	command_params.command = (char_t*) command;
@@ -304,17 +308,30 @@ NODE_status_t AT_BUS_write_register(NODE_access_parameters_t* write_params, uint
 	status = _AT_BUS_wait_reply(&(write_params -> reply_params), &unused_reg_value, write_status);
 	if (status != NODE_SUCCESS) goto errors;
 errors:
+	// Store eventual access status error.
+	if (((write_status -> flags) != 0) && (access_error_stack != 0)) {
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (write_status -> all));
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (write_params -> node_addr));
+	}
 	return status;
 }
 
 /*******************************************************************/
-NODE_status_t AT_BUS_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status) {
+NODE_status_t AT_BUS_read_register(NODE_access_parameters_t* read_params, uint32_t* reg_value, NODE_access_status_t* read_status, uint8_t access_error_stack) {
 	// Local variables.
 	NODE_status_t status = NODE_SUCCESS;
 	STRING_status_t string_status = STRING_SUCCESS;
 	NODE_command_parameters_t command_params;
 	char_t command[AT_BUS_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
 	uint8_t command_size = 0;
+	// Check parameters.
+	if ((read_params == NULL) || (read_status == NULL) || (reg_value == NULL)) {
+		status = NODE_ERROR_NULL_PARAMETER;
+		goto errors;
+	}
+	// Reset access status.
+	(read_status -> all) = 0;
+	(read_status -> type) = NODE_ACCESS_TYPE_READ;
 	// Build command structure.
 	command_params.node_addr = (read_params -> node_addr);
 	command_params.command = (char_t*) command;
@@ -325,10 +342,16 @@ NODE_status_t AT_BUS_read_register(NODE_access_parameters_t* read_params, uint32
 	STRING_exit_error(NODE_ERROR_BASE_STRING);
 	// Send command.
 	status = AT_BUS_send_command(&command_params);
+	if (status != NODE_SUCCESS) goto errors;
 	// Wait reply.
 	status = _AT_BUS_wait_reply(&(read_params -> reply_params), reg_value, read_status);
 	if (status != NODE_SUCCESS) goto errors;
 errors:
+	// Store eventual access status error.
+	if (((read_status -> flags) != 0) && (access_error_stack != 0)) {
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_CODE + (read_status -> all));
+		ERROR_stack_add(ERROR_BASE_NODE + NODE_ERROR_BASE_ACCESS_STATUS_ADDRESS + (read_params -> node_addr));
+	}
 	return status;
 }
 
@@ -358,10 +381,10 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 		// Uppdate address.
 		read_params.node_addr = node_addr;
 		// Read NODE_ID register.
-		status = AT_BUS_read_register(&read_params, &reg_value, &read_status);
+		status = AT_BUS_read_register(&read_params, &reg_value, &read_status, 0);
 		if (status != NODE_SUCCESS) goto errors;
 		// Check reply status.
-		if (read_status.all == 0) {
+		if (read_status.flags == 0) {
 			// Check node address consistency.
 			if (DINFOX_read_field(reg_value, COMMON_REG_NODE_ID_MASK_NODE_ADDR) == node_addr) {
 				// Update board ID.
