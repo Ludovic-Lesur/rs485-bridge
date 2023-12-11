@@ -8,8 +8,8 @@
 #ifndef __MODE_H__
 #define __MODE_H__
 
-/*** Debug mode ***/
+/*** Board modes ***/
 
-//#define DEBUG		// Keep programming pins and disable watchdog.
+//#define DEBUG
 
 #endif /* __MODE_H__ */
