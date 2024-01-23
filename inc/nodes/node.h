@@ -90,9 +90,9 @@ NODE_list_t NODES_LIST;
  * \param[in]  	print_callback: Function to call on frame reception.
  * \param[in]	none_protocol_rx_irq_callback: Function to call on RX interrupt in none protocol mode.
  * \param[out] 	none
- * \retval		none
+ * \retval		Function execution status.
  *******************************************************************/
-void NODE_init(NODE_print_frame_cb_t print_callback, NODE_none_protocol_rx_irq_cb_t none_protocol_rx_irq_callback);
+NODE_status_t NODE_init(NODE_print_frame_cb_t print_callback, NODE_none_protocol_rx_irq_cb_t none_protocol_rx_irq_callback);
 
 /*!******************************************************************
  * \fn void NODE_status_t NODE_set_protocol(NODE_protocol_t protocol)

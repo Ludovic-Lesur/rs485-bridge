@@ -52,6 +52,9 @@ static void DIM_init_hw(void) {
 	// High speed oscillator.
 	rcc_status = RCC_switch_to_hsi();
 	RCC_stack_error();
+	// Calibrate clocks.
+	rcc_status = RCC_calibrate();
+	RCC_stack_error();
 	// Init RTC.
 	rtc_status = RTC_init();
 	RTC_stack_error();

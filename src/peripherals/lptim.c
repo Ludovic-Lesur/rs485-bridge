@@ -7,6 +7,7 @@
 
 #include "lptim.h"
 
+#include "error.h"
 #include "exti.h"
 #include "iwdg.h"
 #include "lptim_reg.h"
@@ -23,13 +24,12 @@
 #define LPTIM_ARR_MAX_VALUE		0xFFFF
 
 #define LPTIM_DELAY_MS_MIN		2
-#define LPTIM_DELAY_MS_MAX		((LPTIM_ARR_MAX_VALUE * 1000) / (lptim_ctx.clock_frequency_hz))
+#define LPTIM_DELAY_MS_MAX		((LPTIM_ARR_MAX_VALUE * 1000) / (RCC_LSE_FREQUENCY_HZ))
 
 /*** LPTIM local structures ***/
 
 /*******************************************************************/
 typedef struct {
-	uint32_t clock_frequency_hz;
 	volatile uint8_t wake_up;
 } LPTIM_context_t;
 
@@ -56,9 +56,7 @@ void __attribute__((optimize("-O0"))) LPTIM1_IRQHandler(void) {
 /*** LPTIM functions ***/
 
 /*******************************************************************/
-void LPTIM1_init(void) {
-	// Use LSE.
-	lptim_ctx.clock_frequency_hz = (RCC_LSE_FREQUENCY_HZ >> 3);
+void __attribute__((optimize("-O0"))) LPTIM1_init(void) {
 	// Enable LPTIM EXTI line.
 	EXTI_configure_line(EXTI_LINE_LPTIM1, EXTI_TRIGGER_RISING_EDGE);
 }
@@ -92,7 +90,7 @@ LPTIM_status_t __attribute__((optimize("-O0"))) LPTIM1_delay_milliseconds(uint32
 	// Compute ARR value.
 	arr = (LPTIM1 -> ARR);
 	arr &= 0xFFFF0000;
-	arr |= ((((delay_ms - 1) * lptim_ctx.clock_frequency_hz) / (1000)) & 0x0000FFFF);
+	arr |= ((((delay_ms - 1) * RCC_LSE_FREQUENCY_HZ) / (1000)) & 0x0000FFFF);
 	// Write register.
 	LPTIM1 -> ARR = arr;
 	// Wait for ARR write operation to complete.

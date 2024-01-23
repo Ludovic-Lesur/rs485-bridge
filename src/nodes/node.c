@@ -46,7 +46,10 @@ void _NODE_flush_list(void) {
 /*** NODE functions ***/
 
 /*******************************************************************/
-void NODE_init(NODE_print_frame_cb_t print_callback, NODE_none_protocol_rx_irq_cb_t none_protocol_rx_irq_callback) {
+NODE_status_t NODE_init(NODE_print_frame_cb_t print_callback, NODE_none_protocol_rx_irq_cb_t none_protocol_rx_irq_callback) {
+	// Local variables.
+	NODE_status_t status = NODE_SUCCESS;
+	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	// Init context.
 	node_ctx.protocol = NODE_PROTOCOL_AT_BUS;
 	node_ctx.baud_rate = 115200;
@@ -57,8 +60,11 @@ void NODE_init(NODE_print_frame_cb_t print_callback, NODE_none_protocol_rx_irq_c
 	AT_BUS_init(print_callback);
 	R4S8CR_init(print_callback);
 	// Init and start LPUART.
-	LPUART1_init();
+	lpuart1_status = LPUART1_init();
+	LPUART1_exit_error(NODE_ERROR_BASE_LPUART);
 	LPUART1_enable_rx();
+errors:
+	return status;
 }
 
 /*******************************************************************/

@@ -53,6 +53,7 @@ static void _AT_USB_print_ok(void);
 static void _AT_USB_print_command_list(void);
 static void _AT_USB_print_sw_version(void);
 static void _AT_USB_print_error_stack(void);
+static void _AT_rcc_callback(void);
 static void _AT_USB_adc_callback(void);
 static void _AT_USB_node_scan_callback(void);
 static void _AT_USB_node_command_callback(void);
@@ -95,6 +96,7 @@ static const AT_USB_command_t AT_USB_COMMAND_LIST[] = {
 	{PARSER_MODE_COMMAND, "AT?", STRING_NULL, "List all available AT commands", _AT_USB_print_command_list},
 	{PARSER_MODE_COMMAND, "AT$V?", STRING_NULL, "Get SW version", _AT_USB_print_sw_version},
 	{PARSER_MODE_COMMAND, "AT$ERROR?", STRING_NULL, "Read error stack", _AT_USB_print_error_stack},
+	{PARSER_MODE_COMMAND, "AT$RCC?", STRING_NULL, "Get clocks frequency", _AT_rcc_callback},
 	{PARSER_MODE_COMMAND, "AT$RST", STRING_NULL, "Reset MCU", PWR_software_reset},
 	{PARSER_MODE_COMMAND, "AT$ADC?", STRING_NULL, "Get ADC measurements", _AT_USB_adc_callback},
 	{PARSER_MODE_COMMAND, "AT$SCAN", STRING_NULL, "Scan all slaves connected to the RS485 bus", _AT_USB_node_scan_callback},
@@ -266,6 +268,40 @@ static void _AT_USB_print_error_stack(void) {
 	}
 	_AT_USB_reply_send();
 	_AT_USB_print_ok();
+}
+
+/*******************************************************************/
+static void _AT_rcc_callback(void) {
+	// Local variables.
+	ERROR_code_t status = SUCCESS;
+	RCC_status_t rcc_status = RCC_SUCCESS;
+	char_t* rcc_clock_name[RCC_CLOCK_LAST] =  {"LSI", "LSE", "MSI", "HSI", "SYS"};
+	uint8_t clock_status = 0;
+	uint32_t clock_frequency = 0;
+	uint8_t idx = 0;
+	// Calibrate clocks.
+	rcc_status = RCC_calibrate();
+	RCC_stack_exit_error(ERROR_BASE_RCC + rcc_status);
+	// Clocks loop.
+	for (idx=0 ; idx<RCC_CLOCK_LAST ; idx++) {
+		// Read status.
+		rcc_status = RCC_get_status(idx, &clock_status);
+		RCC_stack_exit_error(ERROR_BASE_RCC + rcc_status);
+		// Read frequency.
+		rcc_status = RCC_get_frequency_hz(idx, &clock_frequency);
+		RCC_stack_exit_error(ERROR_BASE_RCC + rcc_status);
+		// Print data.
+		_AT_USB_reply_add_string(rcc_clock_name[idx]);
+		_AT_USB_reply_add_string((clock_status == 0) ? ": OFF " : ": ON  ");
+		_AT_USB_reply_add_value((int32_t) clock_frequency, STRING_FORMAT_DECIMAL, 0);
+		_AT_USB_reply_add_string("Hz");
+		_AT_USB_reply_send();
+	}
+	_AT_USB_print_ok();
+	return;
+errors:
+	_AT_USB_print_error(status);
+	return;
 }
 
 /*******************************************************************/
@@ -524,6 +560,8 @@ errors:
 /*******************************************************************/
 void AT_USB_init(void) {
 	// Local variables.
+	NODE_status_t node_status = NODE_SUCCESS;
+	USART_status_t usart2_status = USART_SUCCESS;
 	uint32_t idx = 0;
 	// Init context.
 	_AT_USB_reset_parser();
@@ -534,10 +572,12 @@ void AT_USB_init(void) {
 	at_usb_ctx.none_protocol_buf_write_idx = 0;
 	at_usb_ctx.none_protocol_buf_read_idx = 0;
 	// Init nodes layer in AT_USB mode by default.
-	NODE_init(&_AT_USB_print, &_AT_USB_fill_none_protocol_buffer);
+	node_status = NODE_init(&_AT_USB_print, &_AT_USB_fill_none_protocol_buffer);
+	NODE_stack_error();
 	NODE_set_protocol(NODE_PROTOCOL_AT_BUS);
 	// Init USART and enable commands on USB side.
-	USART2_init(&_AT_USB_fill_rx_buffer);
+	usart2_status = USART2_init(&_AT_USB_fill_rx_buffer);
+	USART2_stack_error();
 	USART2_enable_rx();
 }
 

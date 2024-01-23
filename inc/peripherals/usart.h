@@ -8,6 +8,7 @@
 #ifndef __USART_H__
 #define __USART_H__
 
+#include "rcc.h"
 #include "types.h"
 
 /*** USART structures ***/
@@ -21,8 +22,10 @@ typedef enum {
 	USART_SUCCESS = 0,
 	USART_ERROR_NULL_PARAMETER,
 	USART_ERROR_TX_TIMEOUT,
+	// Low level drivers errors.
+	USART_ERROR_BASE_RCC = 0x0100,
 	// Last base value.
-	USART_ERROR_BASE_LAST = 0x0100
+	USART_ERROR_BASE_LAST = (USART_ERROR_BASE_RCC + RCC_ERROR_BASE_LAST)
 } USART_status_t;
 
 /*!******************************************************************
@@ -38,9 +41,9 @@ typedef void (*USART_rx_irq_cb_t)(uint8_t data);
  * \brief Init USART2 peripheral.
  * \param[in]  	irq_callback: Function to call on interrupt.
  * \param[out] 	none
- * \retval		none
+ * \retval		Function execution status.
  *******************************************************************/
-void USART2_init(USART_rx_irq_cb_t irq_callback);
+USART_status_t USART2_init(USART_rx_irq_cb_t irq_callback);
 
 /*!******************************************************************
  * \fn void USART2_de_init(void)
