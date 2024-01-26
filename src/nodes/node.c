@@ -10,6 +10,7 @@
 #include "at_bus.h"
 #include "at_usb.h"
 #include "dinfox.h"
+#include "error.h"
 #include "lbus.h"
 #include "node_common.h"
 #include "r4s8cr.h"
@@ -46,9 +47,8 @@ void _NODE_flush_list(void) {
 /*** NODE functions ***/
 
 /*******************************************************************/
-NODE_status_t NODE_init(NODE_print_frame_cb_t print_callback, NODE_none_protocol_rx_irq_cb_t none_protocol_rx_irq_callback) {
+void NODE_init(NODE_print_frame_cb_t print_callback, NODE_none_protocol_rx_irq_cb_t none_protocol_rx_irq_callback) {
 	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
 	LPUART_status_t lpuart1_status = LPUART_SUCCESS;
 	// Init context.
 	node_ctx.protocol = NODE_PROTOCOL_AT_BUS;
@@ -56,15 +56,14 @@ NODE_status_t NODE_init(NODE_print_frame_cb_t print_callback, NODE_none_protocol
 	node_ctx.none_protocol_rx_irq_callback = none_protocol_rx_irq_callback;
 	// Reset node list.
 	_NODE_flush_list();
+	// Init common LPUART interface.
+	lpuart1_status = LPUART1_init();
+	LPUART1_stack_error();
 	// Init interface layers.
 	AT_BUS_init(print_callback);
 	R4S8CR_init(print_callback);
-	// Init and start LPUART.
-	lpuart1_status = LPUART1_init();
-	LPUART1_exit_error(NODE_ERROR_BASE_LPUART);
+	// Start reception.
 	LPUART1_enable_rx();
-errors:
-	return status;
 }
 
 /*******************************************************************/

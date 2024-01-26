@@ -560,7 +560,6 @@ errors:
 /*******************************************************************/
 void AT_USB_init(void) {
 	// Local variables.
-	NODE_status_t node_status = NODE_SUCCESS;
 	USART_status_t usart2_status = USART_SUCCESS;
 	uint32_t idx = 0;
 	// Init context.
@@ -572,8 +571,7 @@ void AT_USB_init(void) {
 	at_usb_ctx.none_protocol_buf_write_idx = 0;
 	at_usb_ctx.none_protocol_buf_read_idx = 0;
 	// Init nodes layer in AT_USB mode by default.
-	node_status = NODE_init(&_AT_USB_print, &_AT_USB_fill_none_protocol_buffer);
-	NODE_stack_error();
+	NODE_init(&_AT_USB_print, &_AT_USB_fill_none_protocol_buffer);
 	NODE_set_protocol(NODE_PROTOCOL_AT_BUS);
 	// Init USART and enable commands on USB side.
 	usart2_status = USART2_init(&_AT_USB_fill_rx_buffer);
