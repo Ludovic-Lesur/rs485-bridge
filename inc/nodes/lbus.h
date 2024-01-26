@@ -30,9 +30,9 @@ typedef enum {
 	LBUS_ERROR_ADDRESS,
 	LBUS_ERROR_MODE,
 	// Low level drivers errors.
-	LBUS_ERROR_BASE_LPUART = 0x0100,
+	LBUS_ERROR_BASE_LPUART1 = 0x0100,
 	// Last base value.
-	LBUS_ERROR_BASE_LAST = (LBUS_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
+	LBUS_ERROR_BASE_LAST = (LBUS_ERROR_BASE_LPUART1 + LPUART_ERROR_BASE_LAST),
 } LBUS_status_t;
 
 /*!******************************************************************

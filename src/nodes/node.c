@@ -84,7 +84,7 @@ NODE_status_t NODE_set_protocol(NODE_protocol_t protocol) {
 		lpuart_config.baud_rate = node_ctx.baud_rate;
 		lpuart_config.rx_callback = node_ctx.none_protocol_rx_irq_callback;
 		lpuart1_status = LPUART1_configure(&lpuart_config);
-		LPUART1_exit_error(NODE_ERROR_BASE_LPUART);
+		LPUART1_exit_error(NODE_ERROR_BASE_LPUART1);
 		break;
 	case NODE_PROTOCOL_AT_BUS:
 		// Configure physical interface.
