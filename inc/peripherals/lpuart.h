@@ -50,7 +50,7 @@ typedef struct {
 /*** LPUART functions ***/
 
 /*!******************************************************************
- * \fn void LPUART1_init(void)
+ * \fn LPUART_status_t LPUART1_init(void)
  * \brief Init LPUART1 peripheral.
  * \param[in]  	none
  * \param[out] 	none
