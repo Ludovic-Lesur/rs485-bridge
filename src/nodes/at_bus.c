@@ -114,9 +114,9 @@ static void _AT_BUS_flush_reply(uint8_t reply_index) {
 
 /*******************************************************************/
 static void _AT_BUS_flush_replies(void) {
-	// Local variabless.
+	// Local variables.
 	uint8_t rep_idx = 0;
-	// Reset replys buffers.
+	// Reset replies buffers.
 	for (rep_idx=0 ; rep_idx<AT_BUS_REPLY_BUFFER_DEPTH ; rep_idx++) {
 		_AT_BUS_flush_reply(rep_idx);
 	}
@@ -378,7 +378,7 @@ NODE_status_t AT_BUS_scan(NODE_t* nodes_list, uint8_t nodes_list_size, uint8_t* 
 	LBUS_set_mode(LBUS_MODE_DECODING);
 	// Loop on all addresses.
 	for (node_addr=0 ; node_addr<=DINFOX_NODE_ADDRESS_LBUS_LAST ; node_addr++) {
-		// Uppdate address.
+		// Update address.
 		read_params.node_addr = node_addr;
 		// Read NODE_ID register.
 		status = AT_BUS_read_register(&read_params, &reg_value, &read_status, 0);
