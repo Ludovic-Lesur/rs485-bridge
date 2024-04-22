@@ -35,7 +35,7 @@ static LPUART_rx_irq_cb_t lpuart1_rx_irq_callback = NULL;
 /*** LPUART local functions ***/
 
 /*******************************************************************/
-void LPUART1_IRQHandler(void) {
+void __attribute__((optimize("-O0"))) LPUART1_IRQHandler(void) {
 	// Local variables.
 	uint8_t rx_byte = 0;
 	// RXNE interrupt.
@@ -46,8 +46,6 @@ void LPUART1_IRQHandler(void) {
 		if (lpuart1_rx_irq_callback != NULL) {
 			lpuart1_rx_irq_callback(rx_byte);
 		}
-		// Clear RXNE flag.
-		LPUART1 -> RQR |= (0b1 << 3);
 	}
 	// Overrun error interrupt.
 	if (((LPUART1 -> ISR) & (0b1 << 3)) != 0) {
@@ -124,6 +122,7 @@ LPUART_status_t LPUART1_init(void) {
 	RCC -> CCIPR |= (0b11 << 10); // LPUART1SEL='11'.
 	// Enable peripheral clock.
 	RCC -> APB1ENR |= (0b1 << 18); // LPUARTEN='1'.
+	RCC -> APB1SMENR |= (0b1 << 18); // LPUART1SMEN='1'.
 	// Configure peripheral always in direct mode for reception.
 	LPUART1 -> CR1 |= 0x00000022;
 	LPUART1 -> CR3 |= 0x00B05000;
@@ -170,8 +169,11 @@ void LPUART1_de_init(void) {
 
 /*******************************************************************/
 void LPUART1_enable_rx(void) {
-	// Clear flag and enable interrupt.
-	LPUART1 -> RQR |= (0b1 << 3);
+	// Clear RXNE flag if needed.
+	if (((LPUART1 -> ISR) & (0b1 << 5)) != 0) {
+		LPUART1 -> RQR |= (0b1 << 3);
+	}
+	// Enable interrupt.
 	NVIC_enable_interrupt(NVIC_INTERRUPT_LPUART1, NVIC_PRIORITY_LPUART1);
 	// Enable receiver.
 	LPUART1 -> CR1 |= (0b1 << 2); // RE='1'.
