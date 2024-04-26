@@ -9,7 +9,8 @@
 #define __MAPPING_H__
 
 #include "gpio.h"
-#include "gpio_reg.h"
+
+/*** MAPPING global variables ***/
 
 #ifdef HW1_0
 // VRS control.

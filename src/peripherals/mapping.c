@@ -10,6 +10,8 @@
 #include "gpio.h"
 #include "gpio_reg.h"
 
+/*** MAPPING global variables ***/
+
 #ifdef HW1_0
 // VRS control.
 const GPIO_pin_t GPIO_RS_POWER_ENABLE =	(GPIO_pin_t) {GPIOA, 0, 0, 0};
