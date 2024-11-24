@@ -48,14 +48,14 @@
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.1703623682" name="GNU Arm Cross Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler">
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.usepreprocessor.1026882911" name="Use preprocessor" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.usepreprocessor" useByScannerDiscovery="false" value="true" valueType="boolean"/>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.include.paths.2029142393" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.include.paths" useByScannerDiscovery="true" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/registers&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/peripherals&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/components&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/nodes&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/applicative&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/utils&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../xm/inc/dinfox&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/registers/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/peripherals/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/utils/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/lbus/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/power/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/cli/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/application/inc&quot;"/>
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.defs.1075952582" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.defs" useByScannerDiscovery="true" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="HW1_0"/>
@@ -69,14 +69,14 @@
 							</tool>
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.175463070" name="GNU Arm Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths.694591378" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths" useByScannerDiscovery="true" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/registers&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/peripherals&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/components&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/nodes&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/applicative&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/utils&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../xm/inc/dinfox&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/registers/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/peripherals/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/utils/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/lbus/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/power/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/cli/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/application/inc&quot;"/>
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.1846716259" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" useByScannerDiscovery="true" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="HW1_0"/>
@@ -188,14 +188,14 @@
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler.152623902" name="GNU Arm Cross Assembler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.assembler">
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.usepreprocessor.680087507" name="Use preprocessor" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.usepreprocessor" useByScannerDiscovery="false" value="true" valueType="boolean"/>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.include.paths.1436069323" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.include.paths" useByScannerDiscovery="true" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/registers&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/peripherals&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/components&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/nodes&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/applicative&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/utils&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../xm/inc/dinfox&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/registers/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/peripherals/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/utils/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/lbus/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/power/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/cli/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/application/inc&quot;"/>
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.defs.1767784282" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.assembler.defs" useByScannerDiscovery="true" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__NO_SYSTEM_INIT"/>
@@ -209,14 +209,14 @@
 							</tool>
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.1440083031" name="GNU Arm Cross C Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler">
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths.1101146707" name="Include paths (-I)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.include.paths" useByScannerDiscovery="true" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/registers&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/peripherals&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/components&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/nodes&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/applicative&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/inc/utils&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/../xm/inc/dinfox&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/registers/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/peripherals/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/drivers/utils/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/lbus/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/power/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/middleware/cli/inc&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/application/inc&quot;"/>
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs.634927251" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.c.compiler.defs" useByScannerDiscovery="true" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__NO_SYSTEM_INIT"/>

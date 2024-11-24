@@ -26,6 +26,10 @@ typedef struct {
 	NODE_none_protocol_rx_irq_cb_t none_protocol_rx_irq_callback;
 } NODE_context_t;
 
+/*** NODES global variables ***/
+
+NODE_list_t NODES_LIST;
+
 /*** NODE local global variables ***/
 
 static NODE_context_t node_ctx;

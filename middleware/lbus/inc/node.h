@@ -80,7 +80,7 @@ typedef void (*NODE_none_protocol_rx_irq_cb_t)(uint8_t data);
 
 /*** NODES global variables ***/
 
-NODE_list_t NODES_LIST;
+extern NODE_list_t NODES_LIST;
 
 /*** NODE functions ***/
 
