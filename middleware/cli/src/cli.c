@@ -15,6 +15,8 @@
 #include "nvm_address.h"
 #include "pwr.h"
 #include "rcc.h"
+// Components.
+#include "dip_switch.h"
 // Utils.
 #include "at.h"
 #include "error.h"
@@ -29,7 +31,6 @@
 #include "una_at.h"
 #include "una_r4s8cr.h"
 #include "node.h"
-#include "config.h"
 // Applicative.
 #include "dim_flags.h"
 #include "error_base.h"
@@ -251,7 +252,7 @@ static AT_status_t _CLI_node_scan_callback(void) {
 	NODE_status_t node_status = NODE_SUCCESS;
 	uint8_t idx = 0;
 	// Check if TX is allowed.
-	if (CONFIG_get_tx_mode() == CONFIG_TX_DISABLED) {
+	if (DIP_SWITCH_get_tx_mode() == DIP_SWITCH_TX_MODE_DISABLED) {
 		status = AT_ERROR_COMMAND_EXECUTION;
 		goto errors;
 	}
@@ -345,7 +346,7 @@ static AT_status_t _CLI_node_command_callback(void) {
 	int32_t node_addr = 0;
 	uint8_t command_offset = 0;
 	// Check if TX is allowed.
-	if (CONFIG_get_tx_mode() == CONFIG_TX_DISABLED) {
+	if (DIP_SWITCH_get_tx_mode() == DIP_SWITCH_TX_MODE_DISABLED) {
 		status = AT_ERROR_COMMAND_EXECUTION;
 		goto errors;
 	}
