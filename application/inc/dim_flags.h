@@ -10,7 +10,7 @@
 
 /*** Board modes ***/
 
-#define DIM_MODE_DEBUG
+//#define DIM_MODE_DEBUG
 
 #define DIM_ENABLE_UNA_AT
 //#define DIM_ENABLE_UNA_R4S8CR

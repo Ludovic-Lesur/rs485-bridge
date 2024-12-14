@@ -41,8 +41,8 @@ typedef struct {
     NODE_rx_buffer_t rx_buffer[NODE_RX_BUFFER_DEPTH];
     uint8_t rx_buffer_write_index;
     uint8_t rx_buffer_read_index;
-	NODE_protocol_t protocol;
-	uint32_t baud_rate;
+    NODE_protocol_t protocol;
+    uint32_t baud_rate;
 } NODE_context_t;
 
 /*******************************************************************/
@@ -113,7 +113,7 @@ static NODE_status_t _NODE_print_una_at_frame(void) {
     uint32_t una_at_frame_size = 0;
     uint8_t idx = 0;
     // Flush local frame.
-    for (idx = 0 ; idx < NODE_RX_BUFFER_SIZE_BYTES ; idx++) {
+    for (idx = 0; idx < NODE_RX_BUFFER_SIZE_BYTES; idx++) {
         una_at_frame[idx] = STRING_CHAR_NULL;
     }
     // Read addresses.
@@ -154,12 +154,12 @@ static NODE_status_t _NODE_print_una_r4s8cr_frame(void) {
     NODE_status_t status = NODE_SUCCESS;
     STRING_status_t string_status = STRING_SUCCESS;
     NODE_rx_buffer_t* rx_buffer_ptr = &(node_ctx.rx_buffer[node_ctx.rx_buffer_read_index]);
-    char_t una_r4s8cr_frame[NODE_RX_BUFFER_SIZE_BYTES] = {STRING_CHAR_NULL};
+    char_t una_r4s8cr_frame[NODE_RX_BUFFER_SIZE_BYTES] = { STRING_CHAR_NULL };
     uint8_t idx = 0;
     // Flush local frame.
-   for (idx = 0 ; idx < NODE_RX_BUFFER_SIZE_BYTES ; idx++) {
-       una_r4s8cr_frame[idx] = STRING_CHAR_NULL;
-   }
+    for (idx = 0; idx < NODE_RX_BUFFER_SIZE_BYTES; idx++) {
+        una_r4s8cr_frame[idx] = STRING_CHAR_NULL;
+    }
     // Convert to ASCII.
     string_status = STRING_byte_array_to_hexadecimal_string((uint8_t*) (rx_buffer_ptr->buffer), (rx_buffer_ptr->size), 0, una_r4s8cr_frame);
     STRING_exit_error(NODE_ERROR_BASE_STRING);
@@ -260,27 +260,27 @@ errors:
 
 /*******************************************************************/
 NODE_status_t NODE_init(NODE_print_frame_cb_t print_frame_callback, NODE_none_protocol_rx_irq_cb_t none_protocol_rx_irq_callback) {
-	// Local variables.
+    // Local variables.
     NODE_status_t status = NODE_SUCCESS;
-	// Reset node list and RX buffer.
-	UNA_reset_node_list(&NODES_LIST);
-	_NODE_flush_rx_buffers();
-	// Register callbacks.
-	node_ctx.print_frame_callback = print_frame_callback;
-	node_ctx.none_protocol_rx_irq_callback = none_protocol_rx_irq_callback;
-	// Default configuration.
+    // Reset node list and RX buffer.
+    UNA_reset_node_list(&NODES_LIST);
+    _NODE_flush_rx_buffers();
+    // Register callbacks.
+    node_ctx.print_frame_callback = print_frame_callback;
+    node_ctx.none_protocol_rx_irq_callback = none_protocol_rx_irq_callback;
+    // Default configuration.
 #ifdef DIM_ENABLE_UNA_AT
-	node_ctx.protocol = NODE_PROTOCOL_UNA_AT;
-	node_ctx.baud_rate = 1200;
+    node_ctx.protocol = NODE_PROTOCOL_UNA_AT;
+    node_ctx.baud_rate = 1200;
 #else
-	node_ctx.protocol = NODE_PROTOCOL_NONE;
-	node_ctx.baud_rate = 9600;
+    node_ctx.protocol = NODE_PROTOCOL_NONE;
+    node_ctx.baud_rate = 9600;
 #endif
-	// Start reception in UNA_AT protocol mode by default.
-	status = _NODE_start_decoding();
-	if (status != NODE_SUCCESS) goto errors;
+    // Start reception in UNA_AT protocol mode by default.
+    status = _NODE_start_decoding();
+    if (status != NODE_SUCCESS) goto errors;
 errors:
-	return status;
+    return status;
 }
 
 /*******************************************************************/
@@ -324,95 +324,95 @@ NODE_status_t NODE_get_protocol(NODE_protocol_t* protocol, uint32_t* baud_rate) 
     (*protocol) = node_ctx.protocol;
     (*baud_rate) = node_ctx.baud_rate;
 errors:
-	return status;
+    return status;
 }
 
 /*******************************************************************/
 NODE_status_t NODE_scan(void) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
+    // Local variables.
+    NODE_status_t status = NODE_SUCCESS;
 #ifdef DIM_ENABLE_UNA_AT
-	UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
+    UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
 #endif
 #ifdef DIM_ENABLE_UNA_R4S8CR
     UNA_R4S8CR_status_t una_r4s8cr_status = UNA_R4S8CR_SUCCESS;
 #endif
-	uint8_t nodes_count = 0;
-	// Stop reception.
+    uint8_t nodes_count = 0;
+    // Stop reception.
     status = _NODE_stop_decoding();
     if (status != NODE_SUCCESS) goto errors;
-	// Reset list.
-	UNA_reset_node_list(&NODES_LIST);
+    // Reset list.
+    UNA_reset_node_list(&NODES_LIST);
 #ifdef DIM_ENABLE_UNA_AT
-	// Scan UNA AT nodes.
-	una_at_status = UNA_AT_init(node_ctx.baud_rate);
-	UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
-	una_at_status = UNA_AT_scan(&(NODES_LIST.list[NODES_LIST.count]), (UNA_NODE_ADDRESS_LAST - NODES_LIST.count), &nodes_count);
-	UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
-	una_at_status = UNA_AT_de_init();
+    // Scan UNA AT nodes.
+    una_at_status = UNA_AT_init(node_ctx.baud_rate);
     UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
-	// Update count.
-	NODES_LIST.count += nodes_count;
+    una_at_status = UNA_AT_scan(&(NODES_LIST.list[NODES_LIST.count]), (UNA_NODE_ADDRESS_LAST - NODES_LIST.count), &nodes_count);
+    UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
+    una_at_status = UNA_AT_de_init();
+    UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
+    // Update count.
+    NODES_LIST.count += nodes_count;
 #endif
 #ifdef DIM_ENABLE_UNA_R4S8CR
-	// Scan UNA R4S8CR nodes.
-	una_r4s8cr_status = UNA_R4S8CR_init();
-	UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
-	una_r4s8cr_status = UNA_R4S8CR_scan(&(NODES_LIST.list[NODES_LIST.count]), (UNA_NODE_ADDRESS_LAST - NODES_LIST.count), &nodes_count);
-	UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
-	una_r4s8cr_status = UNA_R4S8CR_de_init();
+    // Scan UNA R4S8CR nodes.
+    una_r4s8cr_status = UNA_R4S8CR_init();
+    UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
+    una_r4s8cr_status = UNA_R4S8CR_scan(&(NODES_LIST.list[NODES_LIST.count]), (UNA_NODE_ADDRESS_LAST - NODES_LIST.count), &nodes_count);
+    UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
+    una_r4s8cr_status = UNA_R4S8CR_de_init();
     UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
 #endif
-	// Update count.
-	NODES_LIST.count += nodes_count;
-	// Re-start reception.
+    // Update count.
+    NODES_LIST.count += nodes_count;
+    // Re-start reception.
     status = _NODE_start_decoding();
     if (status != NODE_SUCCESS) goto errors;
 errors:
-	return status;
+    return status;
 }
 
 /*******************************************************************/
 NODE_status_t NODE_send_command(UNA_command_parameters_t* command_params) {
-	// Local variables.
-	NODE_status_t status = NODE_SUCCESS;
+    // Local variables.
+    NODE_status_t status = NODE_SUCCESS;
 #ifdef DIM_ENABLE_UNA_AT
-	UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
+    UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
 #endif
-	// Check parameters.
-	if (command_params == NULL) {
-		status = NODE_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	if ((command_params -> command) == NULL) {
-		status = NODE_ERROR_NULL_PARAMETER;
-		goto errors;
-	}
-	// Send command with current protocol.
-	switch (node_ctx.protocol) {
+    // Check parameters.
+    if (command_params == NULL) {
+        status = NODE_ERROR_NULL_PARAMETER;
+        goto errors;
+    }
+    if ((command_params->command) == NULL) {
+        status = NODE_ERROR_NULL_PARAMETER;
+        goto errors;
+    }
+    // Send command with current protocol.
+    switch (node_ctx.protocol) {
 #ifdef DIM_ENABLE_UNA_AT
-	case NODE_PROTOCOL_UNA_AT:
-	    // Stop reception.
-	    status = _NODE_stop_decoding();
-	    if (status != NODE_SUCCESS) goto errors;
+    case NODE_PROTOCOL_UNA_AT:
+        // Stop reception.
+        status = _NODE_stop_decoding();
+        if (status != NODE_SUCCESS) goto errors;
         // Send command.
-	    una_at_status = UNA_AT_init(node_ctx.baud_rate);
+        una_at_status = UNA_AT_init(node_ctx.baud_rate);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
-	    una_at_status = UNA_AT_send_command(command_params);
-	    UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
-	    una_at_status = UNA_AT_de_init();
+        una_at_status = UNA_AT_send_command(command_params);
+        UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
+        una_at_status = UNA_AT_de_init();
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
         // Re-start reception.
         status = _NODE_start_decoding();
         if (status != NODE_SUCCESS) goto errors;
-		break;
+        break;
 #endif
-	default:
-		status = NODE_ERROR_PROTOCOL;
-		break;
-	}
+    default:
+        status = NODE_ERROR_PROTOCOL;
+        break;
+    }
 errors:
-	return status;
+    return status;
 }
 
 /*******************************************************************/

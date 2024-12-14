@@ -23,17 +23,17 @@
  * \brief NODE driver error codes.
  *******************************************************************/
 typedef enum {
-	// Driver errors.
-	NODE_SUCCESS = 0,
-	NODE_ERROR_NULL_PARAMETER,
-	NODE_ERROR_PROTOCOL,
-	// Low level drivers errors.
-	NODE_ERROR_BASE_LPUART = 0x0100,
-	NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
-	NODE_ERROR_BASE_UNA_AT = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
-	NODE_ERROR_BASE_UNA_R4S8CR = (NODE_ERROR_BASE_UNA_AT + UNA_AT_ERROR_BASE_LAST),
-	// Last base value.
-	NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_UNA_R4S8CR + UNA_R4S8CR_ERROR_BASE_LAST)
+    // Driver errors.
+    NODE_SUCCESS = 0,
+    NODE_ERROR_NULL_PARAMETER,
+    NODE_ERROR_PROTOCOL,
+    // Low level drivers errors.
+    NODE_ERROR_BASE_LPUART = 0x0100,
+    NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
+    NODE_ERROR_BASE_UNA_AT = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
+    NODE_ERROR_BASE_UNA_R4S8CR = (NODE_ERROR_BASE_UNA_AT + UNA_AT_ERROR_BASE_LAST),
+    // Last base value.
+    NODE_ERROR_BASE_LAST = (NODE_ERROR_BASE_UNA_R4S8CR + UNA_R4S8CR_ERROR_BASE_LAST)
 } NODE_status_t;
 
 /*!******************************************************************
@@ -73,9 +73,9 @@ extern UNA_node_list_t NODES_LIST;
  * \fn NODE_status_t NODE_init(NODE_print_frame_cb_t print_frame_callback, NODE_none_protocol_rx_irq_cb_t none_protocol_rx_irq_callback)
  * \brief Init unified node interface.
  * \param[in]   print_frame_callback: Function to call to print a decoded frame.
- * \param[in]	none_protocol_rx_irq_callback: Function to call to print a raw byte in none protocol decoding mode.
- * \param[out] 	none
- * \retval		Function execution status.
+ * \param[in]   none_protocol_rx_irq_callback: Function to call to print a raw byte in none protocol decoding mode.
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 NODE_status_t NODE_init(NODE_print_frame_cb_t print_frame_callback, NODE_none_protocol_rx_irq_cb_t none_protocol_rx_irq_callback);
 
@@ -91,38 +91,38 @@ NODE_status_t NODE_de_init(void);
 /*!******************************************************************
  * \fn NODE_status_t NODE_set_protocol(NODE_protocol_t protocol, uint32_t baud_rate)
  * \brief Set node protocol.
- * \param[in]  	protocol: Protocol to decode.
+ * \param[in]   protocol: Protocol to decode.
  * \param[in]   Bus baud rate.
- * \param[out] 	none
- * \retval		Function execution status.
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 NODE_status_t NODE_set_protocol(NODE_protocol_t protocol, uint32_t baud_rate);
 
 /*!******************************************************************
  * \fn NODE_status_t NODE_get_protocol(NODE_protocol_t* protocol, uint32_t* baud_rate)
  * \brief Get current node protocol.
- * \param[in]  	none
- * \param[out] 	protocol: Pointer to the current decoding protocol.
+ * \param[in]   none
+ * \param[out]  protocol: Pointer to the current decoding protocol.
  * \param[out]  baud_rate: Pointer to the current bus baud rate.
- * \retval		Current node protocol.
+ * \retval      Current node protocol.
  *******************************************************************/
 NODE_status_t NODE_get_protocol(NODE_protocol_t* protocol, uint32_t* baud_rate);
 
 /*!******************************************************************
  * \fn NODE_status_t NODE_scan(void)
  * \brief Scan all nodes connected to the RS485 bus.
- * \param[in]  	none
- * \param[out]	none
- * \retval		Function execution status.
+ * \param[in]   none
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 NODE_status_t NODE_scan(void);
 
 /*!******************************************************************
  * \fn NODE_status_t NODE_send_command(NODE_command_parameters_t* command_params)
  * \brief Send a command over node interface.
- * \param[in]  	command_params: Pointer to the command parameters.
- * \param[out] 	none
- * \retval		Function execution status.
+ * \param[in]   command_params: Pointer to the command parameters.
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 NODE_status_t NODE_send_command(UNA_command_parameters_t* command_params);
 

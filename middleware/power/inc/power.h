@@ -14,8 +14,8 @@
 
 /*** POWER macros ***/
 
-#define POWER_ON_DELAY_MS_ANALOG	100
-#define POWER_ON_DELAY_MS_RS485		100
+#define POWER_ON_DELAY_MS_ANALOG    100
+#define POWER_ON_DELAY_MS_RS485     100
 
 /*** POWER structures ***/
 
@@ -24,15 +24,15 @@
  * \brief POWER driver error codes.
  *******************************************************************/
 typedef enum {
-	// Driver errors.
-	POWER_SUCCESS,
-	POWER_ERROR_NULL_PARAMETER,
-	POWER_ERROR_DOMAIN,
-	// Low level drivers errors.
-	POWER_ERROR_BASE_ANALOG = 0x0100,
-	POWER_ERROR_BASE_LPTIM = (POWER_ERROR_BASE_ANALOG + ANALOG_ERROR_BASE_LAST),
-	// Last base value.
-	POWER_ERROR_BASE_LAST = (POWER_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST)
+    // Driver errors.
+    POWER_SUCCESS,
+    POWER_ERROR_NULL_PARAMETER,
+    POWER_ERROR_DOMAIN,
+    // Low level drivers errors.
+    POWER_ERROR_BASE_ANALOG = 0x0100,
+    POWER_ERROR_BASE_LPTIM = (POWER_ERROR_BASE_ANALOG + ANALOG_ERROR_BASE_LAST),
+    // Last base value.
+    POWER_ERROR_BASE_LAST = (POWER_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST)
 } POWER_status_t;
 
 /*!******************************************************************
@@ -40,11 +40,11 @@ typedef enum {
  * \brief Board external power domains list.
  *******************************************************************/
 typedef enum {
-	POWER_DOMAIN_ANALOG = 0,
+    POWER_DOMAIN_ANALOG = 0,
 #ifdef HW1_0
-	POWER_DOMAIN_RS485,
+    POWER_DOMAIN_RS485,
 #endif
-	POWER_DOMAIN_LAST
+    POWER_DOMAIN_LAST
 } POWER_domain_t;
 
 /*** POWER functions ***/
@@ -52,37 +52,37 @@ typedef enum {
 /*!******************************************************************
  * \fn void POWER_init(void)
  * \brief Init power control module.
- * \param[in]  	none
- * \param[out] 	none
- * \retval		none
+ * \param[in]   none
+ * \param[out]  none
+ * \retval      none
  *******************************************************************/
 void POWER_init(void);
 
 /*!******************************************************************
  * \fn POWER_status_t POWER_enable(POWER_domain_t domain, LPTIM_delay_mode_t delay_mode)
  * \brief Turn power domain on.
- * \param[in]  	domain: Power domain to enable.
- * \param[in]	delay_mode: Power on delay waiting mode.
- * \param[out] 	none
- * \retval		Function execution status.
+ * \param[in]   domain: Power domain to enable.
+ * \param[in]   delay_mode: Power on delay waiting mode.
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 POWER_status_t POWER_enable(POWER_domain_t domain, LPTIM_delay_mode_t delay_mode);
 
 /*!******************************************************************
  * \fn POWER_status_t POWER_disable(POWER_domain_t domain)
  * \brief Turn power domain off.
- * \param[in]  	domain: Power domain to disable.
- * \param[out] 	none
- * \retval		Function execution status.
+ * \param[in]   domain: Power domain to disable.
+ * \param[out]  none
+ * \retval      Function execution status.
  *******************************************************************/
 POWER_status_t POWER_disable(POWER_domain_t domain);
 
 /*!******************************************************************
  * \fn POWER_status_t POWER_get_state(POWER_domain_t domain, uint8_t* state)
  * \brief Return the current state of a power domain.
- * \param[in]  	domain: Power domain to check.
- * \param[out] 	state: Pointer to the state.
- * \retval		Function execution status.
+ * \param[in]   domain: Power domain to check.
+ * \param[out]  state: Pointer to the state.
+ * \retval      Function execution status.
  *******************************************************************/
 POWER_status_t POWER_get_state(POWER_domain_t domain, uint8_t* state);
 

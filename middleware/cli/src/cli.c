@@ -247,47 +247,47 @@ end:
 
 /*******************************************************************/
 static AT_status_t _CLI_node_scan_callback(void) {
-	// Local variables.
+    // Local variables.
     AT_status_t status = AT_SUCCESS;
-	NODE_status_t node_status = NODE_SUCCESS;
-	uint8_t idx = 0;
-	// Check if TX is allowed.
-	if (DIP_SWITCH_get_tx_mode() == DIP_SWITCH_TX_MODE_DISABLED) {
-		status = AT_ERROR_COMMAND_EXECUTION;
-		goto errors;
-	}
-	// Init screen.
-	AT_reply_add_string("Nodes scan running...");
-	AT_send_reply();
-	// Perform bus scan.
-	node_status = NODE_scan();
-	_CLI_check_driver_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
-	// Print list.
-	AT_reply_add_integer((int32_t) NODES_LIST.count, STRING_FORMAT_DECIMAL, 0);
-	AT_reply_add_string(" node(s) found");
-	AT_send_reply();
-	for (idx=0 ; idx<NODES_LIST.count ; idx++) {
-		// Print address.
-	    AT_reply_add_integer(NODES_LIST.list[idx].address, STRING_FORMAT_HEXADECIMAL, 1);
-		AT_reply_add_string(" : ");
-		// Print board type.
-		if (NODES_LIST.list[idx].board_id == UNA_BOARD_ID_ERROR) {
-			AT_reply_add_string("Board ID error");
-		}
-		else {
-			if (NODES_LIST.list[idx].board_id >= UNA_BOARD_ID_LAST) {
-				AT_reply_add_string("Unknown board ID (");
-				AT_reply_add_integer((int32_t) (NODES_LIST.list[idx].board_id), STRING_FORMAT_HEXADECIMAL, 1);
-				AT_reply_add_string(")");
-			}
-			else {
-				AT_reply_add_string((char_t*) UNA_BOARD_NAME[NODES_LIST.list[idx].board_id]);
-			}
-		}
-		AT_send_reply();
-	}
+    NODE_status_t node_status = NODE_SUCCESS;
+    uint8_t idx = 0;
+    // Check if TX is allowed.
+    if (DIP_SWITCH_get_tx_mode() == DIP_SWITCH_TX_MODE_DISABLED) {
+        status = AT_ERROR_COMMAND_EXECUTION;
+        goto errors;
+    }
+    // Init screen.
+    AT_reply_add_string("Nodes scan running...");
+    AT_send_reply();
+    // Perform bus scan.
+    node_status = NODE_scan();
+    _CLI_check_driver_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
+    // Print list.
+    AT_reply_add_integer((int32_t) NODES_LIST.count, STRING_FORMAT_DECIMAL, 0);
+    AT_reply_add_string(" node(s) found");
+    AT_send_reply();
+    for (idx = 0; idx < NODES_LIST.count; idx++) {
+        // Print address.
+        AT_reply_add_integer(NODES_LIST.list[idx].address, STRING_FORMAT_HEXADECIMAL, 1);
+        AT_reply_add_string(" : ");
+        // Print board type.
+        if (NODES_LIST.list[idx].board_id == UNA_BOARD_ID_ERROR) {
+            AT_reply_add_string("Board ID error");
+        }
+        else {
+            if (NODES_LIST.list[idx].board_id >= UNA_BOARD_ID_LAST) {
+                AT_reply_add_string("Unknown board ID (");
+                AT_reply_add_integer((int32_t) (NODES_LIST.list[idx].board_id), STRING_FORMAT_HEXADECIMAL, 1);
+                AT_reply_add_string(")");
+            }
+            else {
+                AT_reply_add_string((char_t*) UNA_BOARD_NAME[NODES_LIST.list[idx].board_id]);
+            }
+        }
+        AT_send_reply();
+    }
 errors:
-	return status;
+    return status;
 }
 
 /*******************************************************************/
@@ -300,76 +300,76 @@ static AT_status_t _CLI_node_get_protocol_callback(void) {
     // Read protocol.
     node_status = NODE_get_protocol(&protocol, &baud_rate);
     _CLI_check_driver_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
-	// Print value.
+    // Print value.
     AT_reply_add_integer((int32_t) protocol, STRING_FORMAT_DECIMAL, 0);
-	// Print name.
+    // Print name.
     AT_reply_add_string(" (");
     AT_reply_add_string((char_t*) CLI_NODE_PROTOCOL_NAME[protocol]);
-	// Print baud rate.
+    // Print baud rate.
     AT_reply_add_string(") @");
     AT_reply_add_integer((int32_t) baud_rate, STRING_FORMAT_DECIMAL, 0);
     AT_reply_add_string("bauds");
     // Send reply.
-	AT_send_reply();
+    AT_send_reply();
 errors:
-	return status;
+    return status;
 }
 
 /*******************************************************************/
 static AT_status_t _CLI_node_set_protocol_callback(void) {
-	// Local variables.
+    // Local variables.
     AT_status_t status = AT_SUCCESS;
-	PARSER_status_t parser_status = PARSER_SUCCESS;
-	NODE_status_t node_status = NODE_SUCCESS;
-	int32_t protocol = NODE_PROTOCOL_NONE;
-	int32_t baud_rate = 0;
-	// Parse protocol.
-	parser_status = PARSER_get_parameter(cli_ctx.at_parser_ptr, STRING_FORMAT_DECIMAL, CLI_CHAR_SEPARATOR, &protocol);
-	PARSER_exit_error(AT_ERROR_BASE_PARSER);
-	// Parse baud rate
+    PARSER_status_t parser_status = PARSER_SUCCESS;
+    NODE_status_t node_status = NODE_SUCCESS;
+    int32_t protocol = NODE_PROTOCOL_NONE;
+    int32_t baud_rate = 0;
+    // Parse protocol.
+    parser_status = PARSER_get_parameter(cli_ctx.at_parser_ptr, STRING_FORMAT_DECIMAL, CLI_CHAR_SEPARATOR, &protocol);
+    PARSER_exit_error(AT_ERROR_BASE_PARSER);
+    // Parse baud rate
     parser_status = PARSER_get_parameter(cli_ctx.at_parser_ptr, STRING_FORMAT_DECIMAL, STRING_CHAR_NULL, &baud_rate);
     PARSER_exit_error(AT_ERROR_BASE_PARSER);
-	// Set protocol.
-	node_status = NODE_set_protocol((NODE_protocol_t) protocol, (uint32_t) baud_rate);
-	_CLI_check_driver_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
+    // Set protocol.
+    node_status = NODE_set_protocol((NODE_protocol_t) protocol, (uint32_t) baud_rate);
+    _CLI_check_driver_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
 errors:
-	return status;
+    return status;
 }
 
 /*******************************************************************/
 static AT_status_t _CLI_node_command_callback(void) {
-	// Local variables.
+    // Local variables.
     AT_status_t status = AT_SUCCESS;
-	PARSER_status_t parser_status = PARSER_SUCCESS;
-	NODE_status_t node_status = NODE_SUCCESS;
-	UNA_command_parameters_t command_params;
-	int32_t node_addr = 0;
-	uint8_t command_offset = 0;
-	// Check if TX is allowed.
-	if (DIP_SWITCH_get_tx_mode() == DIP_SWITCH_TX_MODE_DISABLED) {
-		status = AT_ERROR_COMMAND_EXECUTION;
-		goto errors;
-	}
-	// Parse node address.
-	parser_status = PARSER_get_parameter(cli_ctx.at_parser_ptr, STRING_FORMAT_HEXADECIMAL, CLI_CHAR_SEPARATOR, &node_addr);
-	PARSER_exit_error(AT_ERROR_BASE_PARSER);
-	// Set command offset.
-	command_offset = ((cli_ctx.at_parser_ptr)->separator_index) + 1;
-	// Update parameters.
-	command_params.node_addr = (UNA_node_address_t) node_addr;
-	command_params.command = (char_t*) &((cli_ctx.at_parser_ptr)->buffer[command_offset]);
-	// Print node access.
-	AT_reply_add_integer(UNA_NODE_ADDRESS_DIM, STRING_FORMAT_HEXADECIMAL, 1);
-	AT_reply_add_string(" > ");
-	AT_reply_add_integer(command_params.node_addr, STRING_FORMAT_HEXADECIMAL, 1);
-	AT_reply_add_string(" : ");
-	AT_reply_add_string(command_params.command);
-	AT_send_reply();
-	// Perform read operation.
-	node_status = NODE_send_command(&command_params);
-	_CLI_check_driver_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
+    PARSER_status_t parser_status = PARSER_SUCCESS;
+    NODE_status_t node_status = NODE_SUCCESS;
+    UNA_command_parameters_t command_params;
+    int32_t node_addr = 0;
+    uint8_t command_offset = 0;
+    // Check if TX is allowed.
+    if (DIP_SWITCH_get_tx_mode() == DIP_SWITCH_TX_MODE_DISABLED) {
+        status = AT_ERROR_COMMAND_EXECUTION;
+        goto errors;
+    }
+    // Parse node address.
+    parser_status = PARSER_get_parameter(cli_ctx.at_parser_ptr, STRING_FORMAT_HEXADECIMAL, CLI_CHAR_SEPARATOR, &node_addr);
+    PARSER_exit_error(AT_ERROR_BASE_PARSER);
+    // Set command offset.
+    command_offset = ((cli_ctx.at_parser_ptr)->separator_index) + 1;
+    // Update parameters.
+    command_params.node_addr = (UNA_node_address_t) node_addr;
+    command_params.command = (char_t*) &((cli_ctx.at_parser_ptr)->buffer[command_offset]);
+    // Print node access.
+    AT_reply_add_integer(UNA_NODE_ADDRESS_DIM, STRING_FORMAT_HEXADECIMAL, 1);
+    AT_reply_add_string(" > ");
+    AT_reply_add_integer(command_params.node_addr, STRING_FORMAT_HEXADECIMAL, 1);
+    AT_reply_add_string(" : ");
+    AT_reply_add_string(command_params.command);
+    AT_send_reply();
+    // Perform read operation.
+    node_status = NODE_send_command(&command_params);
+    _CLI_check_driver_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
 errors:
-	return status;
+    return status;
 }
 
 /*******************************************************************/
