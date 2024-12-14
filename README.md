@@ -1,6 +1,6 @@
 # Description
 
-The **DIM** board is an RS485 to UART/USB interface, which can be used as a debug board to monitor RS485 frames sent within a DINFox system. It embeds the with the following features:
+The **DIM** board is an RS485 to UART/USB interface, which can be used as a debug board to monitor RS485 frames sent within a **UNA system**. It embeds the with the following features:
 
 * Optional RS485 bus **power** supply.
 * USB and RS485 bus voltage **measurements**.
@@ -38,14 +38,12 @@ The project is organized as follow:
 * `drivers` :
     * `registers` : MCU **registers** address definition.
     * `peripherals` : internal MCU **peripherals** drivers.
+    * `mac` : **medium access control** driver.
+    * `components` : external **components** drivers.
     * `utils` : **utility** functions.
 * `middleware` :
     * `analog` : High level **analog measurements** driver.
     * `cli` : **AT commands** implementation.
-    * `lbus` : **RS485** protocol layer.
+    * `node` : **UNA** nodes interface implementation.
     * `power` : Board **power tree** manager.
 * `application` : Main **application**.
-
-## Dependencies
-
-The `inc/dinfox` and `src/dinfox` folders of the [XM project](https://github.com/Ludovic-Lesur/xm) must linked to the DIM project, as they contain common data definition related to the DINFox system.
