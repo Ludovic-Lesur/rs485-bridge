@@ -7,10 +7,11 @@
 
 #include "power.h"
 
-#include "adc.h"
+#include "analog.h"
+#include "error.h"
 #include "gpio.h"
+#include "gpio_mapping.h"
 #include "lptim.h"
-#include "mapping.h"
 #include "types.h"
 
 /*** POWER local global variables ***/
@@ -40,8 +41,8 @@ void POWER_init(void) {
 POWER_status_t POWER_enable(POWER_domain_t domain, LPTIM_delay_mode_t delay_mode) {
 	// Local variables.
 	POWER_status_t status = POWER_SUCCESS;
-	ADC_status_t adc1_status = ADC_SUCCESS;
-	LPTIM_status_t lptim1_status = LPTIM_SUCCESS;
+	ANALOG_status_t analog_status = ANALOG_SUCCESS;
+	LPTIM_status_t lptim_status = LPTIM_SUCCESS;
 	uint32_t delay_ms = 0;
 	// Check domain.
 	switch (domain) {
@@ -50,8 +51,8 @@ POWER_status_t POWER_enable(POWER_domain_t domain, LPTIM_delay_mode_t delay_mode
 #ifdef HW1_1
 		GPIO_write(&GPIO_MNTR_EN, 1);
 #endif
-		adc1_status = ADC1_init();
-		ADC1_exit_error(POWER_ERROR_BASE_ADC1);
+		analog_status = ANALOG_init();
+		ANALOG_exit_error(POWER_ERROR_BASE_ANALOG);
 		delay_ms = POWER_ON_DELAY_MS_ANALOG;
 		break;
 #ifdef HW1_0
@@ -69,8 +70,8 @@ POWER_status_t POWER_enable(POWER_domain_t domain, LPTIM_delay_mode_t delay_mode
 	power_domain_state[domain] = 1;
 	// Power on delay.
 	if (delay_ms != 0) {
-		lptim1_status = LPTIM1_delay_milliseconds(delay_ms, delay_mode);
-		LPTIM1_exit_error(POWER_ERROR_BASE_LPTIM1);
+		lptim_status = LPTIM_delay_milliseconds(delay_ms, delay_mode);
+		LPTIM_exit_error(POWER_ERROR_BASE_LPTIM);
 	}
 errors:
 	return status;
@@ -80,16 +81,16 @@ errors:
 POWER_status_t POWER_disable(POWER_domain_t domain) {
 	// Local variables.
 	POWER_status_t status = POWER_SUCCESS;
-	ADC_status_t adc1_status = ADC_SUCCESS;
+	ANALOG_status_t analog_status = ANALOG_SUCCESS;
 	// Check domain.
 	switch (domain) {
 	case POWER_DOMAIN_ANALOG:
 		// Disable voltage dividers and release ADC.
-		adc1_status = ADC1_de_init();
+	    analog_status = ANALOG_de_init();
 #ifdef HW1_1
 		GPIO_write(&GPIO_MNTR_EN, 0);
 #endif
-		ADC1_exit_error(POWER_ERROR_BASE_ADC1);
+		ANALOG_exit_error(POWER_ERROR_BASE_ANALOG);
 		break;
 #ifdef HW1_0
 	case POWER_DOMAIN_RS485:

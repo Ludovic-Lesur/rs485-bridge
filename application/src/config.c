@@ -8,8 +8,8 @@
 #include "config.h"
 
 #include "gpio.h"
+#include "gpio_mapping.h"
 #include "lptim.h"
-#include "mapping.h"
 
 /*** CONFIG local macros ***/
 
@@ -23,7 +23,7 @@ CONFIG_tx_mode_t CONFIG_get_tx_mode(void) {
 	CONFIG_tx_mode_t tx_mode = CONFIG_TX_DISABLED;
 	// Activate pull up.
 	GPIO_configure(&GPIO_TX_MODE, GPIO_MODE_INPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_UP);
-	LPTIM1_delay_milliseconds(100, 0);
+	LPTIM_delay_milliseconds(100, 0);
 	// Read GPIO.
 	if (GPIO_read(&GPIO_TX_MODE) == 0) {
 		tx_mode = CONFIG_TX_ENABLED;

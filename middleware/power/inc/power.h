@@ -8,7 +8,7 @@
 #ifndef __POWER_H__
 #define __POWER_H__
 
-#include "adc.h"
+#include "analog.h"
 #include "lptim.h"
 #include "types.h"
 
@@ -29,10 +29,10 @@ typedef enum {
 	POWER_ERROR_NULL_PARAMETER,
 	POWER_ERROR_DOMAIN,
 	// Low level drivers errors.
-	POWER_ERROR_BASE_ADC1 = 0x0100,
-	POWER_ERROR_BASE_LPTIM1 = (POWER_ERROR_BASE_ADC1 + ADC_ERROR_BASE_LAST),
+	POWER_ERROR_BASE_ANALOG = 0x0100,
+	POWER_ERROR_BASE_LPTIM = (POWER_ERROR_BASE_ANALOG + ANALOG_ERROR_BASE_LAST),
 	// Last base value.
-	POWER_ERROR_BASE_LAST = (POWER_ERROR_BASE_LPTIM1 + LPTIM_ERROR_BASE_LAST)
+	POWER_ERROR_BASE_LAST = (POWER_ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST)
 } POWER_status_t;
 
 /*!******************************************************************
