@@ -10,6 +10,6 @@
 
 /*** UNA library compilation flags ***/
 
-#define UNA_LIB_BOARD_NAME_ENABLE
+#define UNA_LIB_USE_BOARD_NAME
 
 #endif /* __UNA_LIB_FLAGS_H__ */
