@@ -41,7 +41,8 @@ static void DIM_init_hw(void) {
     NVIC_init();
     // Init power module and clock tree.
     PWR_init();
-    RCC_init(NVIC_PRIORITY_CLOCK);
+    rcc_status = RCC_init(NVIC_PRIORITY_CLOCK);
+    RCC_stack_error(ERROR_BASE_RCC);
     // Init GPIOs.
     GPIO_init();
     EXTI_init();

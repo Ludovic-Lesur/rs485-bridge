@@ -160,11 +160,12 @@ TERMINAL_status_t TERMINAL_HW_set_destination_address(uint8_t instance, uint8_t 
     TERMINAL_status_t status = TERMINAL_SUCCESS;
     LMAC_status_t lmac_status = LMAC_SUCCESS;
     // Check instance.
-    if (instance == TERMINAL_INSTANCE_LMAC) {
+    switch (instance) {
+    case TERMINAL_INSTANCE_LMAC:
         lmac_status = LMAC_set_destination_address(destination_address);
         LMAC_exit_error(TERMINAL_ERROR_BASE_HW_INTERFACE);
-    }
-    else {
+        break;
+    default:
         status = TERMINAL_ERROR_INSTANCE;
         goto errors;
     }

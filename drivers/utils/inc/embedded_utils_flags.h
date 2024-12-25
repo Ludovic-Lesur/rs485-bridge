@@ -8,12 +8,12 @@
 #ifndef __EMBEDDED_UTILS_FLAGS_H__
 #define __EMBEDDED_UTILS_FLAGS_H__
 
-#include "usart.h"
+#include "lmac.h"
 #include "version.h"
 
 /*** Embedded utility functions compilation flags ***/
 
-#define EMBEDDED_UTILS_HW_INTERFACE_ERROR_BASE_LAST     USART_ERROR_BASE_LAST
+#define EMBEDDED_UTILS_HW_INTERFACE_ERROR_BASE_LAST     LMAC_ERROR_BASE_LAST
 
 //#define EMBEDDED_UTILS_AT_BAUD_RATE                   9600
 #define EMBEDDED_UTILS_AT_INTERNAL_COMMANDS_ENABLE

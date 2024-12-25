@@ -117,8 +117,8 @@ static NODE_status_t _NODE_print_una_at_frame(void) {
         una_at_frame[idx] = STRING_CHAR_NULL;
     }
     // Read addresses.
-    source_address = ((UNA_node_address_t) (rx_buffer_ptr->buffer[0])) & LMAC_ADDRESS_MASK;
-    destination_address = ((UNA_node_address_t) (rx_buffer_ptr->buffer[1])) & LMAC_ADDRESS_MASK;
+    destination_address = ((UNA_node_address_t) (rx_buffer_ptr->buffer[0])) & LMAC_ADDRESS_MASK;
+    source_address = ((UNA_node_address_t) (rx_buffer_ptr->buffer[1])) & LMAC_ADDRESS_MASK;
     // Print source address.
     string_status = STRING_append_integer(una_at_frame, NODE_RX_BUFFER_SIZE_BYTES, source_address, STRING_FORMAT_HEXADECIMAL, 1, &una_at_frame_size);
     STRING_exit_error(NODE_ERROR_BASE_STRING);
