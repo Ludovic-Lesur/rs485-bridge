@@ -423,6 +423,12 @@ CLI_status_t CLI_de_init(void) {
     CLI_status_t status = CLI_SUCCESS;
     AT_status_t at_status = AT_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
+    uint8_t idx = 0;
+    // Unregister commands.
+    for (idx = 0; idx < (sizeof(CLI_COMMANDS_LIST) / sizeof(AT_command_t)); idx++) {
+        at_status = AT_unregister_command(&(CLI_COMMANDS_LIST[idx]));
+        AT_exit_error(CLI_ERROR_BASE_AT);
+    }
     // Release AT driver.
     at_status = AT_de_init();
     AT_exit_error(CLI_ERROR_BASE_AT);
