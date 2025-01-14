@@ -362,9 +362,9 @@ NODE_status_t NODE_scan(void) {
     UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
     una_r4s8cr_status = UNA_R4S8CR_de_init();
     UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
-#endif
     // Update count.
     NODES_LIST.count += nodes_count;
+#endif
     // Re-start reception.
     status = _NODE_start_decoding();
     if (status != NODE_SUCCESS) goto errors;
