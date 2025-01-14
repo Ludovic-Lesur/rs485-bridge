@@ -37,7 +37,6 @@
 
 /*** AT local macros ***/
 
-#define CLI_BAUD_RATE       9600
 #define CLI_CHAR_SEPARATOR  STRING_CHAR_COMMA
 
 //#define CLI_COMMAND_RST
@@ -401,7 +400,6 @@ CLI_status_t CLI_init(void) {
     cli_ctx.at_parser_ptr = NULL;
     // Init AT driver.
     at_config.terminal_instance = TERMINAL_INSTANCE_CLI;
-    at_config.terminal_baud_rate = CLI_BAUD_RATE;
     at_config.process_callback = &_CLI_at_process_callback;
     at_status = AT_init(&at_config, &(cli_ctx.at_parser_ptr));
     AT_exit_error(CLI_ERROR_BASE_AT);

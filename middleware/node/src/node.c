@@ -139,10 +139,6 @@ static NODE_status_t _NODE_print_una_at_frame(void) {
         node_ctx.print_frame_callback(una_at_frame);
     }
 errors:
-    // Reset buffer.
-    _NODE_flush_rx_buffer(node_ctx.rx_buffer_read_index);
-    // Increment read index.
-    node_ctx.rx_buffer_read_index = (node_ctx.rx_buffer_read_index + 1) % NODE_RX_BUFFER_DEPTH;
     return status;
 }
 #endif
@@ -426,6 +422,10 @@ NODE_status_t NODE_process(void) {
             status = NODE_DECODE_FRAME_PFN[node_ctx.protocol]();
             if (status != NODE_SUCCESS) goto errors;
         }
+        // Reset buffer.
+        _NODE_flush_rx_buffer(node_ctx.rx_buffer_read_index);
+        // Increment read index.
+        node_ctx.rx_buffer_read_index = (node_ctx.rx_buffer_read_index + 1) % NODE_RX_BUFFER_DEPTH;
     }
 errors:
     return status;
