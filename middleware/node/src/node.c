@@ -329,6 +329,7 @@ NODE_status_t NODE_scan(void) {
     NODE_status_t status = NODE_SUCCESS;
 #ifdef DIM_ENABLE_UNA_AT
     UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
+    UNA_AT_configuration_t una_at_config;
 #endif
 #ifdef DIM_ENABLE_UNA_R4S8CR
     UNA_R4S8CR_status_t una_r4s8cr_status = UNA_R4S8CR_SUCCESS;
@@ -341,7 +342,8 @@ NODE_status_t NODE_scan(void) {
     UNA_reset_node_list(&NODES_LIST);
 #ifdef DIM_ENABLE_UNA_AT
     // Scan UNA AT nodes.
-    una_at_status = UNA_AT_init(node_ctx.baud_rate);
+    una_at_config.baud_rate = node_ctx.baud_rate;
+    una_at_status = UNA_AT_init(&una_at_config);
     UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
     una_at_status = UNA_AT_scan(&(NODES_LIST.list[NODES_LIST.count]), (UNA_NODE_ADDRESS_LAST - NODES_LIST.count), &nodes_count);
     UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
@@ -374,6 +376,7 @@ NODE_status_t NODE_send_command(UNA_command_parameters_t* command_params) {
     NODE_status_t status = NODE_SUCCESS;
 #ifdef DIM_ENABLE_UNA_AT
     UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
+    UNA_AT_configuration_t una_at_config;
 #endif
     // Check parameters.
     if (command_params == NULL) {
@@ -392,7 +395,8 @@ NODE_status_t NODE_send_command(UNA_command_parameters_t* command_params) {
         status = _NODE_stop_decoding();
         if (status != NODE_SUCCESS) goto errors;
         // Send command.
-        una_at_status = UNA_AT_init(node_ctx.baud_rate);
+        una_at_config.baud_rate = node_ctx.baud_rate;
+        una_at_status = UNA_AT_init(&una_at_config);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
         una_at_status = UNA_AT_send_command(command_params);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
