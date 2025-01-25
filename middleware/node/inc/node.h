@@ -42,12 +42,8 @@ typedef enum {
  *******************************************************************/
 typedef enum {
     NODE_PROTOCOL_NONE = 0,
-#ifdef DIM_ENABLE_UNA_AT
     NODE_PROTOCOL_UNA_AT,
-#endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
     NODE_PROTOCOL_UNA_R4S8CR,
-#endif
     NODE_PROTOCOL_LAST
 } NODE_protocol_t;
 
@@ -118,13 +114,13 @@ NODE_status_t NODE_get_protocol(NODE_protocol_t* protocol, uint32_t* baud_rate);
 NODE_status_t NODE_scan(void);
 
 /*!******************************************************************
- * \fn NODE_status_t NODE_send_command(NODE_command_parameters_t* command_params)
+ * \fn NODE_status_t NODE_send_command(NODE_command_parameters_t* command_parameters)
  * \brief Send a command over node interface.
- * \param[in]   command_params: Pointer to the command parameters.
+ * \param[in]   command_parameters: Pointer to the command parameters.
  * \param[out]  none
  * \retval      Function execution status.
  *******************************************************************/
-NODE_status_t NODE_send_command(UNA_command_parameters_t* command_params);
+NODE_status_t NODE_send_command(UNA_command_parameters_t* command_parameters);
 
 /*!******************************************************************
  * \fn NODE_status_t NODE_process(void)

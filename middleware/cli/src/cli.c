@@ -119,12 +119,8 @@ static const AT_command_t CLI_COMMANDS_LIST[] = {
 
 static const char_t* CLI_NODE_PROTOCOL_NAME[NODE_PROTOCOL_LAST] = {
     "None",
-#ifdef DIM_ENABLE_UNA_AT
     "UNA_AT",
-#endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
     "UNA_RS48CR"
-#endif
 };
 
 static CLI_context_t cli_ctx;

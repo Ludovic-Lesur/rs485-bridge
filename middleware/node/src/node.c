@@ -67,9 +67,13 @@ static const NODE_decode_frame_cb_t NODE_DECODE_FRAME_PFN[NODE_PROTOCOL_LAST] = 
     NULL,
 #ifdef DIM_ENABLE_UNA_AT
     &_NODE_print_una_at_frame,
+#else
+    NULL,
 #endif
 #ifdef DIM_ENABLE_UNA_R4S8CR
-    &_NODE_print_una_r4s8cr_frame
+    &_NODE_print_una_r4s8cr_frame,
+#else
+    NULL,
 #endif
 };
 
@@ -150,7 +154,7 @@ static NODE_status_t _NODE_print_una_r4s8cr_frame(void) {
     NODE_status_t status = NODE_SUCCESS;
     STRING_status_t string_status = STRING_SUCCESS;
     NODE_rx_buffer_t* rx_buffer_ptr = &(node_ctx.rx_buffer[node_ctx.rx_buffer_read_index]);
-    char_t una_r4s8cr_frame[NODE_RX_BUFFER_SIZE_BYTES] = { STRING_CHAR_NULL };
+    char_t una_r4s8cr_frame[NODE_RX_BUFFER_SIZE_BYTES];
     uint8_t idx = 0;
     // Flush local frame.
     for (idx = 0; idx < NODE_RX_BUFFER_SIZE_BYTES; idx++) {
@@ -164,10 +168,6 @@ static NODE_status_t _NODE_print_una_r4s8cr_frame(void) {
         node_ctx.print_frame_callback(una_r4s8cr_frame);
     }
 errors:
-    // Reset buffer.
-    _NODE_flush_rx_buffer(node_ctx.rx_buffer_read_index);
-    // Increment read index.
-    node_ctx.rx_buffer_read_index = (node_ctx.rx_buffer_read_index + 1) % NODE_RX_BUFFER_DEPTH;
     return status;
 }
 #endif
@@ -371,19 +371,22 @@ errors:
 }
 
 /*******************************************************************/
-NODE_status_t NODE_send_command(UNA_command_parameters_t* command_params) {
+NODE_status_t NODE_send_command(UNA_command_parameters_t* command_parameters) {
     // Local variables.
     NODE_status_t status = NODE_SUCCESS;
 #ifdef DIM_ENABLE_UNA_AT
     UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
     UNA_AT_configuration_t una_at_config;
 #endif
+#ifdef DIM_ENABLE_UNA_R4S8CR
+    UNA_R4S8CR_status_t una_r4s8cr_status = UNA_R4S8CR_SUCCESS;
+#endif
     // Check parameters.
-    if (command_params == NULL) {
+    if (command_parameters == NULL) {
         status = NODE_ERROR_NULL_PARAMETER;
         goto errors;
     }
-    if ((command_params->command) == NULL) {
+    if ((command_parameters->command) == NULL) {
         status = NODE_ERROR_NULL_PARAMETER;
         goto errors;
     }
@@ -398,10 +401,27 @@ NODE_status_t NODE_send_command(UNA_command_parameters_t* command_params) {
         una_at_config.baud_rate = node_ctx.baud_rate;
         una_at_status = UNA_AT_init(&una_at_config);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
-        una_at_status = UNA_AT_send_command(command_params);
+        una_at_status = UNA_AT_send_command(command_parameters);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
         una_at_status = UNA_AT_de_init();
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
+        // Re-start reception.
+        status = _NODE_start_decoding();
+        if (status != NODE_SUCCESS) goto errors;
+        break;
+#endif
+#ifdef DIM_ENABLE_UNA_R4S8CR
+    case NODE_PROTOCOL_UNA_R4S8CR:
+        // Stop reception.
+        status = _NODE_stop_decoding();
+        if (status != NODE_SUCCESS) goto errors;
+        // Scan UNA R4S8CR nodes.
+        una_r4s8cr_status = UNA_R4S8CR_init();
+        UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
+        una_r4s8cr_status = UNA_R4S8CR_send_command(command_parameters);
+        UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
+        una_r4s8cr_status = UNA_R4S8CR_de_init();
+        UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
         // Re-start reception.
         status = _NODE_start_decoding();
         if (status != NODE_SUCCESS) goto errors;
