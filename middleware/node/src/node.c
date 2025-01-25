@@ -201,6 +201,12 @@ static void _NODE_rx_irq_callback(uint8_t data) {
 #endif
 #ifdef DIM_ENABLE_UNA_R4S8CR
     case NODE_PROTOCOL_UNA_R4S8CR:
+        // Workaround to handle the LPUART TX/RX switching time issue.
+        if ((rx_buffer_ptr->size == 0) && (data != 0xFF)) {
+            // Manually add the R4S8CR header byte.
+            rx_buffer_ptr->buffer[rx_buffer_ptr->size] = 0xFF;
+            rx_buffer_ptr->size = (rx_buffer_ptr->size + 1) % NODE_RX_BUFFER_SIZE_BYTES;
+        }
         // Fill buffer.
         rx_buffer_ptr->buffer[rx_buffer_ptr->size] = data;
         rx_buffer_ptr->size = (rx_buffer_ptr->size + 1) % NODE_RX_BUFFER_SIZE_BYTES;
