@@ -85,6 +85,15 @@ NODE_status_t NODE_init(NODE_print_frame_cb_t print_frame_callback, NODE_none_pr
 NODE_status_t NODE_de_init(void);
 
 /*!******************************************************************
+ * \fn NODE_status_t NODE_process(void)
+ * \brief Process bus decoding.
+ * \param[in]   none
+ * \param[out]  none
+ * \retval      Function execution status.
+ *******************************************************************/
+NODE_status_t NODE_process(void);
+
+/*!******************************************************************
  * \fn NODE_status_t NODE_set_protocol(NODE_protocol_t protocol, uint32_t baud_rate)
  * \brief Set node protocol.
  * \param[in]   protocol: Protocol to decode.
@@ -105,13 +114,27 @@ NODE_status_t NODE_set_protocol(NODE_protocol_t protocol, uint32_t baud_rate);
 NODE_status_t NODE_get_protocol(NODE_protocol_t* protocol, uint32_t* baud_rate);
 
 /*!******************************************************************
- * \fn NODE_status_t NODE_scan(void)
- * \brief Scan all nodes connected to the RS485 bus.
- * \param[in]   none
- * \param[out]  none
+ * \fn NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t reg_value, uint32_t reg_mask, UNA_access_status_t* write_status)
+ * \brief Write node register.
+ * \param[in]   node: Pointer to the node to access.
+ * \param[in]   reg_addr: Address of the register to write.
+ * \param[in]   reg_value: Register value to write.
+ * \param[in]   reg_mask: Writing operation mask.
+ * \param[out]  write_status: Pointer to the writing operation status.
  * \retval      Function execution status.
  *******************************************************************/
-NODE_status_t NODE_scan(void);
+NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t reg_value, uint32_t reg_mask, UNA_access_status_t* write_status);
+
+/*!******************************************************************
+ * \fn NODE_status_t NODE_read_register(UNA_node_address_t node_addr, uint8_t reg_addr, uint32_t* reg_value, UNA_access_status_t* read_status);
+ * \brief Read node register.
+ * \param[in]   node: Pointer to the node to access.
+ * \param[in]   reg_addr: Address of the register to read.
+ * \param[out]  reg_value: Pointer to the read register value.
+ * \param[out]  read_status: Pointer to the read operation status.
+ * \retval      Function execution status.
+ *******************************************************************/
+NODE_status_t NODE_read_register(UNA_node_t* node, uint8_t reg_addr, uint32_t* reg_value, UNA_access_status_t* read_status);
 
 /*!******************************************************************
  * \fn NODE_status_t NODE_send_command(NODE_command_parameters_t* command_parameters)
@@ -123,13 +146,13 @@ NODE_status_t NODE_scan(void);
 NODE_status_t NODE_send_command(UNA_command_parameters_t* command_parameters);
 
 /*!******************************************************************
- * \fn NODE_status_t NODE_process(void)
- * \brief Process bus decoding.
+ * \fn NODE_status_t NODE_scan(void)
+ * \brief Scan all nodes connected to the RS485 bus.
  * \param[in]   none
  * \param[out]  none
  * \retval      Function execution status.
  *******************************************************************/
-NODE_status_t NODE_process(void);
+NODE_status_t NODE_scan(void);
 
 /*******************************************************************/
 #define NODE_exit_error(error_base) { if (node_status != NODE_SUCCESS) { status = (error_base + node_status); goto errors; } }

@@ -23,6 +23,7 @@
 #include "math.h"
 #include "parser.h"
 #include "string.h"
+#include "swreg.h"
 #include "terminal_hw.h"
 #include "terminal_instance.h"
 #include "types.h"
@@ -39,8 +40,10 @@
 
 #define CLI_CHAR_SEPARATOR  STRING_CHAR_COMMA
 
-//#define CLI_COMMAND_RST
+#define CLI_COMMAND_Z
 //#define CLI_COMMAND_RCC
+//#define CLI_COMMAND_ADC
+//#define CLI_COMMAND_NODE_COMMAND
 
 /*** CLI local structures ***/
 
@@ -53,28 +56,34 @@ typedef struct {
 /*** CLI local functions declaration ***/
 
 /*******************************************************************/
-#ifdef CLI_COMMAND_RST
-static AT_status_t _CLI_rst_callback(void);
+#ifdef CLI_COMMAND_Z
+static AT_status_t _CLI_z_callback(void);
 #endif
 #ifdef CLI_COMMAND_RCC
 static AT_status_t _CLI_rcc_callback(void);
 #endif
+#ifdef CLI_COMMAND_ADC
 static AT_status_t _CLI_adc_callback(void);
+#endif
 /*******************************************************************/
 static AT_status_t _CLI_node_scan_callback(void);
 static AT_status_t _CLI_node_get_protocol_callback(void);
 static AT_status_t _CLI_node_set_protocol_callback(void);
+static AT_status_t _CLI_node_write_callback(void);
+static AT_status_t _CLI_node_read_callback(void);
+#ifdef CLI_COMMAND_NODE_COMMAND
 static AT_status_t _CLI_node_command_callback(void);
+#endif
 
 /*** CLI local global variables ***/
 
 static const AT_command_t CLI_COMMANDS_LIST[] = {
-#ifdef CLI_COMMAND_RST
+#ifdef CLI_COMMAND_Z
     {
-        .syntax = "$RST",
+        .syntax = "Z",
         .parameters = NULL,
         .description = "Reset MCU",
-        .callback = &_CLI_rst_callback
+        .callback = &_CLI_z_callback
     },
 #endif
 #ifdef CLI_COMMAND_RCC
@@ -85,12 +94,14 @@ static const AT_command_t CLI_COMMANDS_LIST[] = {
         .callback = &_CLI_rcc_callback
     },
 #endif
+#ifdef CLI_COMMAND_ADC
     {
         .syntax = "$ADC?",
         .parameters = NULL,
         .description = "Read analog measurements",
         .callback = &_CLI_adc_callback
     },
+#endif
     {
         .syntax = "$SCAN",
         .parameters = NULL,
@@ -110,11 +121,25 @@ static const AT_command_t CLI_COMMANDS_LIST[] = {
         .callback = &_CLI_node_set_protocol_callback
     },
     {
+        .syntax = "$W=",
+        .parameters = "node_addr[hex],reg_addr[hex],reg_value[hex](,reg_mask[hex])",
+        .description = "Read node register",
+        .callback = &_CLI_node_write_callback
+    },
+    {
+        .syntax = "$R=",
+        .parameters = "node_addr[hex],reg_addr[hex]",
+        .description = "Read node register",
+        .callback = &_CLI_node_read_callback
+    },
+#ifdef CLI_COMMAND_NODE_COMMAND
+    {
         .syntax = "$NODE=",
         .parameters = "node_address[hex],command[str]",
         .description = "Send node command",
         .callback = &_CLI_node_command_callback
     }
+#endif
 };
 
 static const char_t* CLI_NODE_PROTOCOL_NAME[NODE_PROTOCOL_LAST] = {
@@ -145,9 +170,9 @@ static void _CLI_at_process_callback(void) {
     cli_ctx.at_process_flag = 1;
 }
 
-#ifdef CLI_COMMAND_RST
+#ifdef CLI_COMMAND_Z
 /*******************************************************************/
-static AT_status_t _CLI_rst_callback(void) {
+static AT_status_t _CLI_z_callback(void) {
     // Local variables.
     AT_status_t status = AT_SUCCESS;
     // Execute command.
@@ -182,7 +207,7 @@ static AT_status_t _CLI_rcc_callback(void) {
         _CLI_check_driver_status(rcc_status, RCC_SUCCESS, ERROR_BASE_RCC);
         // Print data.
         AT_reply_add_string(rcc_clock_name[idx]);
-        AT_reply_add_string((clock_status == 0) ? ": OFF " : ": ON  ");
+        AT_reply_add_string((clock_status == 0) ? ":OFF:" : ":ON:");
         AT_reply_add_integer((int32_t) clock_frequency, STRING_FORMAT_DECIMAL, 0);
         AT_reply_add_string("Hz");
         AT_send_reply();
@@ -192,6 +217,7 @@ errors:
 }
 #endif
 
+#ifdef CLI_COMMAND_ADC
 /*******************************************************************/
 static AT_status_t _CLI_adc_callback(void) {
     // Local variables.
@@ -239,6 +265,7 @@ errors:
 end:
     return status;
 }
+#endif
 
 /*******************************************************************/
 static AT_status_t _CLI_node_scan_callback(void) {
@@ -263,17 +290,15 @@ static AT_status_t _CLI_node_scan_callback(void) {
     AT_send_reply();
     for (idx = 0; idx < NODES_LIST.count; idx++) {
         // Print address.
-        AT_reply_add_integer(NODES_LIST.list[idx].address, STRING_FORMAT_HEXADECIMAL, 1);
-        AT_reply_add_string(" : ");
+        AT_reply_add_integer(NODES_LIST.list[idx].address, STRING_FORMAT_HEXADECIMAL, 0);
+        AT_reply_add_string(":");
         // Print board type.
         if (NODES_LIST.list[idx].board_id == UNA_BOARD_ID_ERROR) {
-            AT_reply_add_string("Board ID error");
+            AT_reply_add_string("ERROR");
         }
         else {
             if (NODES_LIST.list[idx].board_id >= UNA_BOARD_ID_LAST) {
-                AT_reply_add_string("Unknown board ID (");
-                AT_reply_add_integer((int32_t) (NODES_LIST.list[idx].board_id), STRING_FORMAT_HEXADECIMAL, 1);
-                AT_reply_add_string(")");
+                AT_reply_add_integer((int32_t) (NODES_LIST.list[idx].board_id), STRING_FORMAT_HEXADECIMAL, 0);
             }
             else {
                 AT_reply_add_string((char_t*) UNA_BOARD_NAME[NODES_LIST.list[idx].board_id]);
@@ -298,10 +323,10 @@ static AT_status_t _CLI_node_get_protocol_callback(void) {
     // Print value.
     AT_reply_add_integer((int32_t) protocol, STRING_FORMAT_DECIMAL, 0);
     // Print name.
-    AT_reply_add_string(" (");
+    AT_reply_add_string(":");
     AT_reply_add_string((char_t*) CLI_NODE_PROTOCOL_NAME[protocol]);
     // Print baud rate.
-    AT_reply_add_string(") @");
+    AT_reply_add_string(":");
     AT_reply_add_integer((int32_t) baud_rate, STRING_FORMAT_DECIMAL, 0);
     AT_reply_add_string("bauds");
     // Send reply.
@@ -332,6 +357,97 @@ errors:
 }
 
 /*******************************************************************/
+static AT_status_t _CLI_node_write_callback(void) {
+    // Local variables.
+    AT_status_t status = AT_SUCCESS;
+    PARSER_status_t parser_status = PARSER_SUCCESS;
+    NODE_status_t node_status = NODE_SUCCESS;
+    UNA_access_status_t write_status;
+    UNA_node_t node;
+    int32_t node_addr = 0;
+    uint32_t reg_addr = 0;
+    uint32_t reg_value = 0;
+    uint32_t reg_mask = 0;
+    // Check if TX is allowed.
+    if (DIP_SWITCH_get_tx_mode() == DIP_SWITCH_TX_MODE_DISABLED) {
+        status = AT_ERROR_COMMAND_EXECUTION;
+        goto errors;
+    }
+    // Parse node address.
+    parser_status = PARSER_get_parameter(cli_ctx.at_parser_ptr, STRING_FORMAT_HEXADECIMAL, CLI_CHAR_SEPARATOR, &node_addr);
+    PARSER_exit_error(AT_ERROR_BASE_PARSER);
+    // Read address parameter.
+    parser_status = SWREG_parse_register(cli_ctx.at_parser_ptr, CLI_CHAR_SEPARATOR, &reg_addr);
+    PARSER_exit_error(AT_ERROR_BASE_PARSER);
+    // First try with 3 parameters.
+    parser_status = SWREG_parse_register(cli_ctx.at_parser_ptr, CLI_CHAR_SEPARATOR, &reg_value);
+    if (parser_status == PARSER_SUCCESS) {
+        // Try parsing register mask parameter.
+        parser_status = SWREG_parse_register(cli_ctx.at_parser_ptr, STRING_CHAR_NULL, &reg_mask);
+        PARSER_exit_error(AT_ERROR_BASE_PARSER);
+    }
+    else {
+        // Try with only 2 parameters.
+        parser_status = SWREG_parse_register(cli_ctx.at_parser_ptr, STRING_CHAR_NULL, &reg_value);
+        PARSER_exit_error(AT_ERROR_BASE_PARSER);
+        // Perform full write operation since mask is not given.
+        reg_mask = UNA_REGISTER_MASK_ALL;
+    }
+    // Perform read operation.
+    node.address = node_addr;
+    node.board_id = UNA_BOARD_ID_ERROR;
+    node_status = NODE_write_register(&node, reg_addr, reg_value, reg_mask, &write_status);
+    _CLI_check_driver_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
+    // Print write status.
+    AT_reply_add_integer((int32_t) (write_status.all), STRING_FORMAT_HEXADECIMAL, 0);
+    AT_send_reply();
+errors:
+    return status;
+}
+
+/*******************************************************************/
+static AT_status_t _CLI_node_read_callback(void) {
+    // Local variables.
+    AT_status_t status = AT_SUCCESS;
+    PARSER_status_t parser_status = PARSER_SUCCESS;
+    NODE_status_t node_status = NODE_SUCCESS;
+    UNA_access_status_t read_status;
+    UNA_node_t node;
+    int32_t node_addr = 0;
+    uint32_t reg_addr = 0;
+    uint32_t reg_value = 0;
+    uint8_t idx = 0;
+    // Check if TX is allowed.
+    if (DIP_SWITCH_get_tx_mode() == DIP_SWITCH_TX_MODE_DISABLED) {
+        status = AT_ERROR_COMMAND_EXECUTION;
+        goto errors;
+    }
+    // Parse node address.
+    parser_status = PARSER_get_parameter(cli_ctx.at_parser_ptr, STRING_FORMAT_HEXADECIMAL, CLI_CHAR_SEPARATOR, &node_addr);
+    PARSER_exit_error(AT_ERROR_BASE_PARSER);
+    // Read address parameter.
+    parser_status = SWREG_parse_register(cli_ctx.at_parser_ptr, STRING_CHAR_NULL, &reg_addr);
+    PARSER_exit_error(AT_ERROR_BASE_PARSER);
+    // Perform read operation.
+    node.address = node_addr;
+    node.board_id = UNA_BOARD_ID_ERROR;
+    node_status = NODE_read_register(&node, reg_addr, &reg_value, &read_status);
+    _CLI_check_driver_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
+    // Print read status and register value.
+    AT_reply_add_integer((int32_t) (read_status.all), STRING_FORMAT_HEXADECIMAL, 0);
+    if (read_status.flags == 0) {
+        AT_reply_add_string(":");
+        for (idx = 0; idx < UNA_REGISTER_SIZE_BYTES; idx++) {
+            AT_reply_add_integer((int32_t) ((reg_value >> ((UNA_REGISTER_SIZE_BYTES - 1 - idx) << 3)) & 0xFF), STRING_FORMAT_HEXADECIMAL, 0);
+        }
+    }
+    AT_send_reply();
+errors:
+    return status;
+}
+
+#ifdef CLI_COMMAND_NODE_COMMAND
+/*******************************************************************/
 static AT_status_t _CLI_node_command_callback(void) {
     // Local variables.
     AT_status_t status = AT_SUCCESS;
@@ -354,9 +470,9 @@ static AT_status_t _CLI_node_command_callback(void) {
     command_params.node_addr = (UNA_node_address_t) node_addr;
     command_params.command = (char_t*) &((cli_ctx.at_parser_ptr)->buffer[command_offset]);
     // Print node access.
-    AT_reply_add_integer(UNA_NODE_ADDRESS_DIM, STRING_FORMAT_HEXADECIMAL, 1);
+    AT_reply_add_integer(UNA_NODE_ADDRESS_DIM, STRING_FORMAT_HEXADECIMAL, 0);
     AT_reply_add_string(" > ");
-    AT_reply_add_integer(command_params.node_addr, STRING_FORMAT_HEXADECIMAL, 1);
+    AT_reply_add_integer(command_params.node_addr, STRING_FORMAT_HEXADECIMAL, 0);
     AT_reply_add_string(" : ");
     AT_reply_add_string(command_params.command);
     AT_send_reply();
@@ -366,6 +482,7 @@ static AT_status_t _CLI_node_command_callback(void) {
 errors:
     return status;
 }
+#endif
 
 /*******************************************************************/
 static void _CLI_node_print_frame_callback(char_t* frame) {
