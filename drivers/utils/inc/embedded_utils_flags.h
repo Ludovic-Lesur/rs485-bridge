@@ -17,6 +17,7 @@
 
 #define EMBEDDED_UTILS_AT_BAUD_RATE                     9600
 #define EMBEDDED_UTILS_AT_REPLY_END                     "\r\n"
+#define EMBEDDED_UTILS_AT_FORCE_OK
 #define EMBEDDED_UTILS_AT_INTERNAL_COMMANDS_ENABLE
 #define EMBEDDED_UTILS_AT_COMMANDS_LIST_SIZE            16
 #define EMBEDDED_UTILS_AT_BUFFER_SIZE                   128

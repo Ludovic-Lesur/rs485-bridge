@@ -27,4 +27,6 @@
 
 #define UNA_AT_NODE_ADDRESS_LAST            LMAC_ADDRESS_LAST
 
+//#define UNA_AT_CUSTOM_COMMANDS
+
 #endif /* __UNA_AT_FLAGS_H__ */
