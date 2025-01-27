@@ -11,6 +11,7 @@
 #include "error.h"
 #include "gpio_mapping.h"
 #include "nvic_priority.h"
+#include "power.h"
 #include "string.h"
 #include "types.h"
 #include "una.h"
@@ -279,6 +280,9 @@ NODE_status_t NODE_init(NODE_print_frame_cb_t print_frame_callback, NODE_none_pr
 #else
     node_ctx.protocol = NODE_PROTOCOL_NONE;
     node_ctx.baud_rate = 9600;
+#endif
+#ifdef HW1_0
+    POWER_enable(POWER_REQUESTER_ID_NODE, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_SLEEP);
 #endif
     // Start reception in UNA_AT protocol mode by default.
     status = _NODE_start_decoding();

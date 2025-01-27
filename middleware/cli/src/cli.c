@@ -40,7 +40,7 @@
 
 #define CLI_CHAR_SEPARATOR  STRING_CHAR_COMMA
 
-#define CLI_COMMAND_Z
+//#define CLI_COMMAND_Z
 //#define CLI_COMMAND_RCC
 //#define CLI_COMMAND_ADC
 //#define CLI_COMMAND_NODE_COMMAND
@@ -222,12 +222,10 @@ errors:
 static AT_status_t _CLI_adc_callback(void) {
     // Local variables.
     AT_status_t status = AT_SUCCESS;
-    POWER_status_t power_status = POWER_SUCCESS;
     ANALOG_status_t analog_status = ANALOG_SUCCESS;
     int32_t generic_s32 = 0;
     // Turn analog front-end on.
-    power_status = POWER_enable(POWER_DOMAIN_ANALOG, LPTIM_DELAY_MODE_ACTIVE);
-    _CLI_check_driver_status(power_status, POWER_SUCCESS, ERROR_BASE_POWER);
+    POWER_enable(POWER_REQUESTER_ID_CLI, POWER_DOMAIN_ANALOG, LPTIM_DELAY_MODE_ACTIVE);
     // MCU voltage.
     analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_VMCU_MV, &generic_s32);
     _CLI_check_driver_status(analog_status, ANALOG_SUCCESS, ERROR_BASE_ANALOG);
@@ -256,13 +254,8 @@ static AT_status_t _CLI_adc_callback(void) {
     AT_reply_add_integer(generic_s32, STRING_FORMAT_DECIMAL, 0);
     AT_reply_add_string("mV");
     AT_send_reply();
-    // Turn analog front-end off.
-    power_status = POWER_disable(POWER_DOMAIN_ANALOG);
-    _CLI_check_driver_status(power_status, POWER_SUCCESS, ERROR_BASE_POWER);
-    goto end;
 errors:
-    POWER_disable(POWER_DOMAIN_ANALOG);
-end:
+    POWER_disable(POWER_REQUESTER_ID_CLI, POWER_DOMAIN_ANALOG);
     return status;
 }
 #endif
