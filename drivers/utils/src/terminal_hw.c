@@ -11,6 +11,7 @@
 #include "embedded_utils_flags.h"
 #endif
 #include "error.h"
+#include "error_base.h"
 #include "lmac.h"
 #include "mcu_mapping.h"
 #include "nvic_priority.h"
@@ -61,12 +62,12 @@ TERMINAL_status_t TERMINAL_HW_de_init(uint8_t instance) {
     switch (instance) {
     case TERMINAL_INSTANCE_LMAC:
         lmac_status = LMAC_de_init();
-        LMAC_exit_error(TERMINAL_ERROR_BASE_HW_INTERFACE);
+        LMAC_stack_error(ERROR_BASE_TERMINAL + TERMINAL_ERROR_BASE_HW_INTERFACE);
         break;
     case TERMINAL_INSTANCE_CLI:
         // Release USART.
        usart_status = USART_de_init(USART_INSTANCE_AT, &USART_GPIO_AT);
-       USART_exit_error(TERMINAL_ERROR_BASE_HW_INTERFACE);
+       USART_stack_error(ERROR_BASE_TERMINAL + TERMINAL_ERROR_BASE_HW_INTERFACE);
        break;
     default:
         status = TERMINAL_ERROR_INSTANCE;

@@ -45,6 +45,7 @@ static void DIM_init_hw(void) {
     RCC_stack_error(ERROR_BASE_RCC);
     // Init GPIOs.
     GPIO_init();
+    POWER_init();
     EXTI_init();
 #ifndef DIM_MODE_DEBUG
     // Start independent watchdog.
@@ -63,8 +64,6 @@ static void DIM_init_hw(void) {
     RTC_stack_error(ERROR_BASE_RTC);
     // Init delay timer.
     LPTIM_init(NVIC_PRIORITY_DELAY);
-    // Init components.
-    POWER_init();
     // Init AT interface.
     cli_status = CLI_init();
     CLI_stack_error(ERROR_BASE_CLI);

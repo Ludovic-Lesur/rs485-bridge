@@ -11,6 +11,7 @@
 #include "lmac_driver_flags.h"
 #endif
 #include "error.h"
+#include "error_base.h"
 #include "mcu_mapping.h"
 #include "lmac.h"
 #include "nvic_priority.h"
@@ -49,8 +50,7 @@ LMAC_status_t LMAC_HW_de_init(void) {
     LPUART_status_t lpuart_status = LPUART_SUCCESS;
     // Release LPUART.
     lpuart_status = LPUART_de_init(&LPUART_GPIO_RS485);
-    LPUART_exit_error(LMAC_ERROR_BASE_HW_INTERFACE);
-errors:
+    LPUART_stack_error(ERROR_BASE_LMAC + LMAC_ERROR_BASE_HW_INTERFACE);
     return status;
 }
 

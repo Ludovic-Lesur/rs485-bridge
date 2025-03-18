@@ -9,6 +9,7 @@
 
 #include "dim_flags.h"
 #include "error.h"
+#include "error_base.h"
 #include "mcu_mapping.h"
 #include "nvic_priority.h"
 #include "power.h"
@@ -266,11 +267,10 @@ static NODE_status_t _NODE_stop_decoding(void) {
     LPUART_status_t lpuart_status = LPUART_SUCCESS;
     // Stop receiver.
     lpuart_status = LPUART_disable_rx();
-    LPUART_exit_error(NODE_ERROR_BASE_LPUART);
+    LPUART_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_LPUART);
     // Release LPUART.
     lpuart_status = LPUART_de_init(&LPUART_GPIO_RS485);
-    LPUART_exit_error(NODE_ERROR_BASE_LPUART);
-errors:
+    LPUART_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_LPUART);
     return status;
 }
 
@@ -308,10 +308,10 @@ errors:
 NODE_status_t NODE_de_init(void) {
     // Local variables.
     NODE_status_t status = NODE_SUCCESS;
+    NODE_status_t node_status = NODE_SUCCESS;
     // Stop reception.
-    status = _NODE_stop_decoding();
-    if (status != NODE_SUCCESS) goto errors;
-errors:
+    node_status = _NODE_stop_decoding();
+    NODE_stack_error(ERROR_BASE_NODE);
     return status;
 }
 

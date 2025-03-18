@@ -13,8 +13,13 @@
 #include "lptim.h"
 #include "rcc.h"
 #include "rtc.h"
+// MAC.
+#include "lmac.h"
 // Utils.
 #include "error.h"
+#include "terminal.h"
+// Components.
+#include "r4s8cr.h"
 // Middleware.
 #include "analog.h"
 #include "cli.h"
@@ -33,8 +38,14 @@ typedef enum {
     ERROR_BASE_LPTIM = (ERROR_BASE_IWDG + IWDG_ERROR_BASE_LAST),
     ERROR_BASE_RCC = (ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
     ERROR_BASE_RTC = (ERROR_BASE_RCC + RCC_ERROR_BASE_LAST),
+    // MAC.
+    ERROR_BASE_LMAC = (ERROR_BASE_RTC + RTC_ERROR_BASE_LAST),
+    // Utils.
+    ERROR_BASE_TERMINAL = (ERROR_BASE_LMAC + LMAC_ERROR_BASE_LAST),
+    // Components.
+    ERROR_BASE_R4S8CR = (ERROR_BASE_TERMINAL + TERMINAL_ERROR_BASE_LAST),
     // Middleware.
-    ERROR_BASE_ANALOG = (ERROR_BASE_RTC + RTC_ERROR_BASE_LAST),
+    ERROR_BASE_ANALOG = (ERROR_BASE_R4S8CR + R4S8CR_ERROR_BASE_LAST),
     ERROR_BASE_CLI = (ERROR_BASE_ANALOG + ANALOG_ERROR_BASE_LAST),
     ERROR_BASE_POWER = (ERROR_BASE_CLI + CLI_ERROR_BASE_LAST),
     // Nodes.
