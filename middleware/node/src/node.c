@@ -9,7 +9,7 @@
 
 #include "dim_flags.h"
 #include "error.h"
-#include "gpio_mapping.h"
+#include "mcu_mapping.h"
 #include "nvic_priority.h"
 #include "power.h"
 #include "string.h"
@@ -237,7 +237,7 @@ static NODE_status_t _NODE_start_decoding(void) {
     lpuart_config.rxne_callback = &_NODE_rx_irq_callback;
     lpuart_config.self_address = UNA_NODE_ADDRESS_DIM;
     lpuart_config.rx_mode = LPUART_RX_MODE_DIRECT;
-    lpuart_status = LPUART_init(&GPIO_RS485_LPUART, &lpuart_config);
+    lpuart_status = LPUART_init(&LPUART_GPIO_RS485, &lpuart_config);
     LPUART_exit_error(NODE_ERROR_BASE_LPUART);
     // Start receiver.
     lpuart_status = LPUART_enable_rx();
@@ -255,7 +255,7 @@ static NODE_status_t _NODE_stop_decoding(void) {
     lpuart_status = LPUART_disable_rx();
     LPUART_exit_error(NODE_ERROR_BASE_LPUART);
     // Release LPUART.
-    lpuart_status = LPUART_de_init(&GPIO_RS485_LPUART);
+    lpuart_status = LPUART_de_init(&LPUART_GPIO_RS485);
     LPUART_exit_error(NODE_ERROR_BASE_LPUART);
 errors:
     return status;

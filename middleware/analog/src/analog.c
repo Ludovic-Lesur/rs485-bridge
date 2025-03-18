@@ -9,21 +9,18 @@
 
 #include "adc.h"
 #include "error.h"
-#include "gpio_mapping.h"
+#include "mcu_mapping.h"
 #include "types.h"
 
 /*** ANALOG local macros ***/
 
-#define ANALOG_VMCU_MV_DEFAULT                  3000
-#define ANALOG_TMCU_DEGREES_DEFAULT             25
+#define ANALOG_VMCU_MV_DEFAULT          3000
+#define ANALOG_TMCU_DEGREES_DEFAULT     25
 
-#define ANALOG_ADC_CHANNEL_VRS                  ADC_CHANNEL_IN4
-#define ANALOG_ADC_CHANNEL_VUSB                 ADC_CHANNEL_IN5
+#define ANALOG_VRS_DIVIDER_RATIO        10
+#define ANALOG_VUSB_DIVIDER_RATIO       2
 
-#define ANALOG_VRS_DIVIDER_RATIO                10
-#define ANALOG_VUSB_DIVIDER_RATIO               2
-
-#define ANALOG_ERROR_VALUE                      0xFFFF
+#define ANALOG_ERROR_VALUE              0xFFFF
 
 /*** ANALOG local structures ***/
 
@@ -48,7 +45,7 @@ ANALOG_status_t ANALOG_init(void) {
     // Init context.
     analog_ctx.vmcu_mv = ANALOG_VMCU_MV_DEFAULT;
     // Init internal ADC.
-    adc_status = ADC_init(&GPIO_ADC);
+    adc_status = ADC_init(&ADC_GPIO);
     ADC_exit_error(ANALOG_ERROR_BASE_ADC);
 errors:
     return status;
@@ -99,14 +96,14 @@ ANALOG_status_t ANALOG_convert_channel(ANALOG_channel_t channel, int32_t* analog
         break;
     case ANALOG_CHANNEL_VRS_MV:
         // Bus voltage.
-        adc_status = ADC_convert_channel(ANALOG_ADC_CHANNEL_VRS, &adc_data_12bits);
+        adc_status = ADC_convert_channel(ADC_CHANNEL_VRS, &adc_data_12bits);
         ADC_exit_error(ANALOG_ERROR_BASE_ADC);
         // Convert to mV.
         (*analog_data) = (adc_data_12bits * analog_ctx.vmcu_mv * ANALOG_VRS_DIVIDER_RATIO) / (ADC_FULL_SCALE);
         break;
     case ANALOG_CHANNEL_VUSB_MV:
         // Supercap voltage.
-        adc_status = ADC_convert_channel(ANALOG_ADC_CHANNEL_VUSB, &adc_data_12bits);
+        adc_status = ADC_convert_channel(ADC_CHANNEL_VUSB, &adc_data_12bits);
         ADC_exit_error(ANALOG_ERROR_BASE_ADC);
         // Convert to mV.
         (*analog_data) = (adc_data_12bits * analog_ctx.vmcu_mv * ANALOG_VUSB_DIVIDER_RATIO) / (ADC_FULL_SCALE);

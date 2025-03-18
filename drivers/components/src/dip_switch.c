@@ -8,7 +8,7 @@
 #include "dip_switch.h"
 
 #include "gpio.h"
-#include "gpio_mapping.h"
+#include "mcu_mapping.h"
 #include "lptim.h"
 
 /*** DIP SWITCH local macros ***/
