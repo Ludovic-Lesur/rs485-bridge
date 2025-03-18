@@ -8,6 +8,7 @@
 #ifndef __NODE_H__
 #define __NODE_H__
 
+#include "error.h"
 #include "dim_flags.h"
 #include "lpuart.h"
 #include "strings.h"
@@ -28,7 +29,7 @@ typedef enum {
     NODE_ERROR_NULL_PARAMETER,
     NODE_ERROR_PROTOCOL,
     // Low level drivers errors.
-    NODE_ERROR_BASE_LPUART = 0x0100,
+    NODE_ERROR_BASE_LPUART = ERROR_BASE_STEP,
     NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
     NODE_ERROR_BASE_UNA_AT = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
     NODE_ERROR_BASE_UNA_R4S8CR = (NODE_ERROR_BASE_UNA_AT + UNA_AT_ERROR_BASE_LAST),
