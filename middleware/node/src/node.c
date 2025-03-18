@@ -80,7 +80,20 @@ static const NODE_decode_frame_cb_t NODE_DECODE_FRAME_PFN[NODE_PROTOCOL_LAST] = 
 #endif
 };
 
-static NODE_context_t node_ctx;
+static NODE_context_t node_ctx = {
+    .print_frame_callback = NULL,
+    .none_protocol_rx_irq_callback = NULL,
+    .rx_buffer = {
+        [0 ... (NODE_RX_BUFFER_DEPTH - 1)] = {
+            .buffer = { [0 ... (NODE_RX_BUFFER_SIZE_BYTES - 1)] = 0x00 },
+            .size = 0
+        }
+    },
+    .rx_buffer_write_index = 0,
+    .rx_buffer_read_index = 0,
+    .protocol = NODE_PROTOCOL_NONE,
+    .baud_rate = 1200
+};
 
 /*** NODE local functions ***/
 

@@ -142,13 +142,16 @@ static const AT_command_t CLI_COMMANDS_LIST[] = {
 #endif
 };
 
-static const char_t* CLI_NODE_PROTOCOL_NAME[NODE_PROTOCOL_LAST] = {
+static const char_t* const CLI_NODE_PROTOCOL_NAME[NODE_PROTOCOL_LAST] = {
     "None",
     "UNA_AT",
     "UNA_RS48CR"
 };
 
-static CLI_context_t cli_ctx;
+static CLI_context_t cli_ctx = {
+    .at_process_flag = 0,
+    .at_parser_ptr = NULL
+};
 
 /*** CLI local functions ***/
 
