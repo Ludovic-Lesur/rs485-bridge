@@ -10,7 +10,7 @@
 
 #include "dim_flags.h"
 #include "lpuart.h"
-#include "string.h"
+#include "strings.h"
 #include "types.h"
 #include "una.h"
 #include "una_at.h"

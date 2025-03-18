@@ -20,9 +20,9 @@
 // Utils.
 #include "at.h"
 #include "error.h"
-#include "math.h"
+#include "maths.h"
 #include "parser.h"
-#include "string.h"
+#include "strings.h"
 #include "swreg.h"
 #include "terminal_hw.h"
 #include "terminal_instance.h"

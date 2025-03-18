@@ -13,7 +13,7 @@
 #include "mcu_mapping.h"
 #include "nvic_priority.h"
 #include "power.h"
-#include "string.h"
+#include "strings.h"
 #include "types.h"
 #include "una.h"
 #include "una_at.h"
@@ -248,9 +248,9 @@ static NODE_status_t _NODE_start_decoding(void) {
     // Init LPUART.
     lpuart_config.baud_rate = node_ctx.baud_rate;
     lpuart_config.nvic_priority = NVIC_PRIORITY_RS485;
-    lpuart_config.rxne_callback = &_NODE_rx_irq_callback;
+    lpuart_config.rxne_irq_callback = &_NODE_rx_irq_callback;
     lpuart_config.self_address = UNA_NODE_ADDRESS_DIM;
-    lpuart_config.rx_mode = LPUART_RX_MODE_DIRECT;
+    lpuart_config.rs485_mode = LPUART_RS485_MODE_DIRECT;
     lpuart_status = LPUART_init(&LPUART_GPIO_RS485, &lpuart_config);
     LPUART_exit_error(NODE_ERROR_BASE_LPUART);
     // Start receiver.

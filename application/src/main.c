@@ -31,6 +31,7 @@ static void DIM_init_hw(void) {
     // Local variables.
     RCC_status_t rcc_status = RCC_SUCCESS;
     RTC_status_t rtc_status = RTC_SUCCESS;
+    LPTIM_status_t lptim_status = LPTIM_SUCCESS;
     CLI_status_t cli_status = CLI_SUCCESS;
 #ifndef DIM_MODE_DEBUG
     IWDG_status_t iwdg_status = IWDG_SUCCESS;
@@ -63,7 +64,8 @@ static void DIM_init_hw(void) {
     rtc_status = RTC_init(NULL, NVIC_PRIORITY_RTC);
     RTC_stack_error(ERROR_BASE_RTC);
     // Init delay timer.
-    LPTIM_init(NVIC_PRIORITY_DELAY);
+    lptim_status = LPTIM_init(NVIC_PRIORITY_DELAY);
+    LPTIM_stack_error(ERROR_BASE_LPTIM);
     // Init AT interface.
     cli_status = CLI_init();
     CLI_stack_error(ERROR_BASE_CLI);
@@ -81,7 +83,7 @@ int main(void) {
     while (1) {
         // Enter sleep mode.
         IWDG_reload();
-        PWR_enter_sleep_mode();
+        PWR_enter_sleep_mode(PWR_SLEEP_MODE_NORMAL);
         IWDG_reload();
         // Wake-up.
         cli_status = CLI_process();
