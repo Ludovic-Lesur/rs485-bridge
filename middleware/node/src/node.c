@@ -24,7 +24,7 @@
 #define NODE_RX_BUFFER_DEPTH            16
 #define NODE_RX_BUFFER_SIZE_BYTES       128
 
-#define NODE_UNA_AT_FRAME_END_MARKER    STRING_CHAR_CR
+#define NODE_UNA_AT_FRAME_END_MARKER    0x7F
 
 #define NODE_UNA_R4S8CR_FRAME_SIZE      10
 
@@ -55,7 +55,7 @@ typedef NODE_status_t (*NODE_decode_frame_cb_t)(void);
 /*** NODE local functions declaration ***/
 
 #ifdef DIM_ENABLE_UNA_AT
-static NODE_status_t _NODE_print_una_at_frame(void);
+static NODE_status_t _NODE_print_lmac_frame(void);
 #endif
 #ifdef DIM_ENABLE_UNA_R4S8CR
 static NODE_status_t _NODE_print_una_r4s8cr_frame(void);
@@ -70,7 +70,7 @@ UNA_node_list_t NODES_LIST;
 static const NODE_decode_frame_cb_t NODE_DECODE_FRAME_PFN[NODE_PROTOCOL_LAST] = {
     NULL,
 #ifdef DIM_ENABLE_UNA_AT
-    &_NODE_print_una_at_frame,
+    &_NODE_print_lmac_frame,
 #else
     NULL,
 #endif
@@ -123,41 +123,57 @@ static void _NODE_flush_rx_buffers(void) {
 
 #ifdef DIM_ENABLE_UNA_AT
 /*******************************************************************/
-static NODE_status_t _NODE_print_una_at_frame(void) {
+static NODE_status_t _NODE_print_lmac_frame(void) {
     // Local variables.
     NODE_status_t status = NODE_SUCCESS;
     STRING_status_t string_status = STRING_SUCCESS;
     NODE_rx_buffer_t* rx_buffer_ptr = &(node_ctx.rx_buffer[node_ctx.rx_buffer_read_index]);
-    UNA_node_address_t source_address;
-    UNA_node_address_t destination_address;
-    char_t una_at_frame[NODE_RX_BUFFER_SIZE_BYTES];
-    uint32_t una_at_frame_size = 0;
+    UNA_node_address_t lmac_source_address;
+    UNA_node_address_t lmac_destination_address;
+    uint8_t lmac_data[NODE_RX_BUFFER_SIZE_BYTES];
+    uint8_t lmac_ckh = 0;
+    uint8_t lmac_ckl = 0;
+    char_t lmac_frame[NODE_RX_BUFFER_SIZE_BYTES];
+    uint32_t lmac_frame_size = 0;
     uint8_t idx = 0;
     // Flush local frame.
     for (idx = 0; idx < NODE_RX_BUFFER_SIZE_BYTES; idx++) {
-        una_at_frame[idx] = STRING_CHAR_NULL;
+        lmac_frame[idx] = STRING_CHAR_NULL;
+        lmac_data[idx] = STRING_CHAR_NULL;
     }
     // Read addresses.
-    destination_address = ((UNA_node_address_t) (rx_buffer_ptr->buffer[0])) & LMAC_ADDRESS_MASK;
-    source_address = ((UNA_node_address_t) (rx_buffer_ptr->buffer[1])) & LMAC_ADDRESS_MASK;
+    lmac_destination_address = ((UNA_node_address_t) (rx_buffer_ptr->buffer[0])) & LMAC_ADDRESS_MASK;
+    lmac_source_address = ((UNA_node_address_t) (rx_buffer_ptr->buffer[1])) & LMAC_ADDRESS_MASK;
+    // Read data.
+    for (idx = 0; idx < ((rx_buffer_ptr->size) - 4); idx++) {
+        lmac_data[idx] = rx_buffer_ptr->buffer[idx + 2];
+    }
+    // Read checksum.
+    lmac_ckh = rx_buffer_ptr->buffer[(rx_buffer_ptr->size) - 2];
+    lmac_ckl = rx_buffer_ptr->buffer[(rx_buffer_ptr->size) - 1];
     // Print source address.
-    string_status = STRING_append_integer(una_at_frame, NODE_RX_BUFFER_SIZE_BYTES, source_address, STRING_FORMAT_HEXADECIMAL, 0, &una_at_frame_size);
+    string_status = STRING_append_integer(lmac_frame, NODE_RX_BUFFER_SIZE_BYTES, (int32_t) lmac_source_address, STRING_FORMAT_HEXADECIMAL, 0, &lmac_frame_size);
     STRING_exit_error(NODE_ERROR_BASE_STRING);
-    // Print symbol.
-    string_status = STRING_append_string(una_at_frame, NODE_RX_BUFFER_SIZE_BYTES, " > ", &una_at_frame_size);
+    string_status = STRING_append_string(lmac_frame, NODE_RX_BUFFER_SIZE_BYTES, " > ", &lmac_frame_size);
     STRING_exit_error(NODE_ERROR_BASE_STRING);
     // Print destination address.
-    string_status = STRING_append_integer(una_at_frame, NODE_RX_BUFFER_SIZE_BYTES, destination_address, STRING_FORMAT_HEXADECIMAL, 0, &una_at_frame_size);
+    string_status = STRING_append_integer(lmac_frame, NODE_RX_BUFFER_SIZE_BYTES, (int32_t) lmac_destination_address, STRING_FORMAT_HEXADECIMAL, 0, &lmac_frame_size);
     STRING_exit_error(NODE_ERROR_BASE_STRING);
-    // Print symbol.
-    string_status = STRING_append_string(una_at_frame, NODE_RX_BUFFER_SIZE_BYTES, " : ", &una_at_frame_size);
+    string_status = STRING_append_string(lmac_frame, NODE_RX_BUFFER_SIZE_BYTES, " : ", &lmac_frame_size);
     STRING_exit_error(NODE_ERROR_BASE_STRING);
-    // Print command.
-    string_status = STRING_append_string(una_at_frame, NODE_RX_BUFFER_SIZE_BYTES, (char_t*) &(rx_buffer_ptr->buffer[2]), &una_at_frame_size);
+    // Print checksum.
+    string_status = STRING_append_integer(lmac_frame, NODE_RX_BUFFER_SIZE_BYTES, (int32_t) lmac_ckh, STRING_FORMAT_HEXADECIMAL, 0, &lmac_frame_size);
+    STRING_exit_error(NODE_ERROR_BASE_STRING);
+    string_status = STRING_append_integer(lmac_frame, NODE_RX_BUFFER_SIZE_BYTES, (int32_t) lmac_ckl, STRING_FORMAT_HEXADECIMAL, 0, &lmac_frame_size);
+    STRING_exit_error(NODE_ERROR_BASE_STRING);
+    string_status = STRING_append_string(lmac_frame, NODE_RX_BUFFER_SIZE_BYTES, " : ", &lmac_frame_size);
+    STRING_exit_error(NODE_ERROR_BASE_STRING);
+    // Print data.
+    string_status = STRING_append_string(lmac_frame, NODE_RX_BUFFER_SIZE_BYTES, (char_t*) lmac_data, &lmac_frame_size);
     STRING_exit_error(NODE_ERROR_BASE_STRING);
     // Print frame.
     if (node_ctx.print_frame_callback != NULL) {
-        node_ctx.print_frame_callback(una_at_frame);
+        node_ctx.print_frame_callback(lmac_frame);
     }
 errors:
     return status;

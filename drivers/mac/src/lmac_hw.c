@@ -90,11 +90,9 @@ errors:
     return status;
 }
 
-#ifdef LMAC_DRIVER_MODE_SLAVE
 /*******************************************************************/
-uint32_t LMAC_HW_get_uptime_seconds(void) {
-    return RTC_get_uptime_seconds();
+void LMAC_HW_stack_error(LMAC_status_t status) {
+    ERROR_stack_add(ERROR_BASE_LMAC + status);
 }
-#endif
 
 #endif /* LMAC_DRIVER_DISABLE */
