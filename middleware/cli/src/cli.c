@@ -40,11 +40,6 @@
 
 #define CLI_CHAR_SEPARATOR  STRING_CHAR_COMMA
 
-//#define CLI_COMMAND_Z
-//#define CLI_COMMAND_RCC
-//#define CLI_COMMAND_ADC
-//#define CLI_COMMAND_NODE_COMMAND
-
 /*** CLI local structures ***/
 
 /*******************************************************************/
@@ -56,52 +51,37 @@ typedef struct {
 /*** CLI local functions declaration ***/
 
 /*******************************************************************/
-#ifdef CLI_COMMAND_Z
 static AT_status_t _CLI_z_callback(void);
-#endif
-#ifdef CLI_COMMAND_RCC
 static AT_status_t _CLI_rcc_callback(void);
-#endif
-#ifdef CLI_COMMAND_ADC
 static AT_status_t _CLI_adc_callback(void);
-#endif
-/*******************************************************************/
 static AT_status_t _CLI_node_scan_callback(void);
 static AT_status_t _CLI_node_get_protocol_callback(void);
 static AT_status_t _CLI_node_set_protocol_callback(void);
 static AT_status_t _CLI_node_write_callback(void);
 static AT_status_t _CLI_node_read_callback(void);
-#ifdef CLI_COMMAND_NODE_COMMAND
 static AT_status_t _CLI_node_command_callback(void);
-#endif
 
 /*** CLI local global variables ***/
 
 static const AT_command_t CLI_COMMANDS_LIST[] = {
-#ifdef CLI_COMMAND_Z
     {
         .syntax = "Z",
         .parameters = NULL,
         .description = "Reset MCU",
         .callback = &_CLI_z_callback
     },
-#endif
-#ifdef CLI_COMMAND_RCC
     {
         .syntax = "$RCC?",
         .parameters = NULL,
         .description = "Get clocks frequency",
         .callback = &_CLI_rcc_callback
     },
-#endif
-#ifdef CLI_COMMAND_ADC
     {
         .syntax = "$ADC?",
         .parameters = NULL,
         .description = "Read analog measurements",
         .callback = &_CLI_adc_callback
     },
-#endif
     {
         .syntax = "$SCAN",
         .parameters = NULL,
@@ -132,14 +112,12 @@ static const AT_command_t CLI_COMMANDS_LIST[] = {
         .description = "Read node register",
         .callback = &_CLI_node_read_callback
     },
-#ifdef CLI_COMMAND_NODE_COMMAND
     {
         .syntax = "$NODE=",
         .parameters = "node_address[hex],command[str]",
         .description = "Send node command",
         .callback = &_CLI_node_command_callback
     }
-#endif
 };
 
 static const char_t* const CLI_NODE_PROTOCOL_NAME[NODE_PROTOCOL_LAST] = {
@@ -173,7 +151,6 @@ static void _CLI_at_process_callback(void) {
     cli_ctx.at_process_flag = 1;
 }
 
-#ifdef CLI_COMMAND_Z
 /*******************************************************************/
 static AT_status_t _CLI_z_callback(void) {
     // Local variables.
@@ -182,9 +159,7 @@ static AT_status_t _CLI_z_callback(void) {
     PWR_software_reset();
     return status;
 }
-#endif
 
-#ifdef CLI_COMMAND_RCC
 /*******************************************************************/
 static AT_status_t _CLI_rcc_callback(void) {
     // Local variables.
@@ -218,9 +193,7 @@ static AT_status_t _CLI_rcc_callback(void) {
 errors:
     return status;
 }
-#endif
 
-#ifdef CLI_COMMAND_ADC
 /*******************************************************************/
 static AT_status_t _CLI_adc_callback(void) {
     // Local variables.
@@ -261,7 +234,6 @@ errors:
     POWER_disable(POWER_REQUESTER_ID_CLI, POWER_DOMAIN_ANALOG);
     return status;
 }
-#endif
 
 /*******************************************************************/
 static AT_status_t _CLI_node_scan_callback(void) {
@@ -442,7 +414,6 @@ errors:
     return status;
 }
 
-#ifdef CLI_COMMAND_NODE_COMMAND
 /*******************************************************************/
 static AT_status_t _CLI_node_command_callback(void) {
     // Local variables.
@@ -478,7 +449,6 @@ static AT_status_t _CLI_node_command_callback(void) {
 errors:
     return status;
 }
-#endif
 
 /*******************************************************************/
 static void _CLI_node_print_frame_callback(char_t* frame) {
