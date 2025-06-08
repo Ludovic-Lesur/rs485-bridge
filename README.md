@@ -1,11 +1,10 @@
 # Description
 
-The **RS485-BRIDGE** board is an RS485 to UART/USB interface, which can be used as a debug board to monitor RS485 frames sent within a **UNA system**. It embeds the with the following features:
+The **RS485-BRIDGE** board is an RS485 to UART/USB interface, which can be used as a debug board to monitor the data transfered on an **RS485 bus**. It embeds the following features:
 
 * Optional RS485 bus **power** supply.
-* USB and RS485 bus voltage **measurements**.
-* Dynamic **addressed or direct** mode.
-* RS485 **nodes scanning**.
+* USB and RS485 bus voltages **measurements**.
+* **UNA systems** support including nodes scanning.
 
 # Hardware
 
@@ -14,7 +13,7 @@ The boards were designed on **Circuit Maker V2.0**. Below is the list of hardwar
 | Hardware revision | Description | Status |
 |:---:|:---:|:---:|
 | [DIM HW1.0](https://365.altium.com/files/3F3B832D-FFF6-457E-A74F-EDA6BAF90587) | Initial version. | :x: |
-| [DIM HW1.1](https://365.altium.com/files/D0E36E2E-D212-4D50-BA3B-173AD1895161) | Add transistor on VRS voltage measurement to save energy consumption.<br>Add jumper on RS485 bus power supply. | :white_check_mark: |
+| [DIM HW1.1](https://365.altium.com/files/D0E36E2E-D212-4D50-BA3B-173AD1895161) | Add transistor on VRS voltage measurement to save energy consumption. Add jumper on RS485 bus power supply. | :white_check_mark: |
 | [RS485-BRIDGE HW1.0](https://365.altium.com/files/87E26F6B-C53E-4FF7-9692-B11B183856CE) | Upgrade based on STM32G4 MCU. | :hammer: |
 
 # Embedded software
@@ -28,7 +27,7 @@ The embedded software is developed under **Eclipse IDE** version 2024-09 (4.33.0
 
 ## Target
 
-The boards are based on the **STM32L011F4P3** microcontroller of the STMicroelectronics L0 family. Each hardware revision has a corresponding **build configuration** in the Eclipse project, which sets up the code for the selected board version.
+The boards are based on the **STM32L031F6P6** and **STM32G441KBU6**  microcontrollers of the STMicroelectronics L0/G4 families. Each hardware revision has a corresponding **build configuration** in the Eclipse project, which sets up the code for the selected board version.
 
 ## Structure
 
