@@ -33,8 +33,8 @@
 #include "una_r4s8cr.h"
 #include "node.h"
 // Applicative.
-#include "dim_flags.h"
 #include "error_base.h"
+#include "rs485_bridge_flags.h"
 
 /*** AT local macros ***/
 
@@ -437,7 +437,7 @@ static AT_status_t _CLI_node_command_callback(void) {
     command_params.node_addr = (UNA_node_address_t) node_addr;
     command_params.command = (char_t*) &((cli_ctx.at_parser_ptr)->buffer[command_offset]);
     // Print node access.
-    AT_reply_add_integer(UNA_NODE_ADDRESS_DIM, STRING_FORMAT_HEXADECIMAL, 0);
+    AT_reply_add_integer(UNA_NODE_ADDRESS_RS485_BRIDGE, STRING_FORMAT_HEXADECIMAL, 0);
     AT_reply_add_string(" > ");
     AT_reply_add_integer(command_params.node_addr, STRING_FORMAT_HEXADECIMAL, 0);
     AT_reply_add_string(" : ");

@@ -9,8 +9,8 @@
 #define __NODE_H__
 
 #include "error.h"
-#include "dim_flags.h"
 #include "lpuart.h"
+#include "rs485_bridge_flags.h"
 #include "strings.h"
 #include "types.h"
 #include "una.h"

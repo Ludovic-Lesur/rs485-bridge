@@ -1,6 +1,6 @@
 # Description
 
-The **DIM** board is an RS485 to UART/USB interface, which can be used as a debug board to monitor RS485 frames sent within a **UNA system**. It embeds the with the following features:
+The **RS485-BRIDGE** board is an RS485 to UART/USB interface, which can be used as a debug board to monitor RS485 frames sent within a **UNA system**. It embeds the with the following features:
 
 * Optional RS485 bus **power** supply.
 * USB and RS485 bus voltage **measurements**.
@@ -15,6 +15,7 @@ The boards were designed on **Circuit Maker V2.0**. Below is the list of hardwar
 |:---:|:---:|:---:|
 | [DIM HW1.0](https://365.altium.com/files/3F3B832D-FFF6-457E-A74F-EDA6BAF90587) | Initial version. | :x: |
 | [DIM HW1.1](https://365.altium.com/files/D0E36E2E-D212-4D50-BA3B-173AD1895161) | Add transistor on VRS voltage measurement to save energy consumption.<br>Add jumper on RS485 bus power supply. | :white_check_mark: |
+| [RS485-BRIDGE HW1.0](https://365.altium.com/files/87E26F6B-C53E-4FF7-9692-B11B183856CE) | Upgrade based on STM32G4 MCU. | :hammer: |
 
 # Embedded software
 

@@ -27,13 +27,13 @@
 /*** MAIN local functions ***/
 
 /*******************************************************************/
-static void DIM_init_hw(void) {
+static void RS485_BRIDGE_init_hw(void) {
     // Local variables.
     RCC_status_t rcc_status = RCC_SUCCESS;
     RTC_status_t rtc_status = RTC_SUCCESS;
     LPTIM_status_t lptim_status = LPTIM_SUCCESS;
     CLI_status_t cli_status = CLI_SUCCESS;
-#ifndef DIM_MODE_DEBUG
+#ifndef RS485_BRIDGE_MODE_DEBUG
     IWDG_status_t iwdg_status = IWDG_SUCCESS;
 #endif
     // Init error stack
@@ -48,7 +48,7 @@ static void DIM_init_hw(void) {
     GPIO_init();
     POWER_init();
     EXTI_init();
-#ifndef DIM_MODE_DEBUG
+#ifndef RS485_BRIDGE_MODE_DEBUG
     // Start independent watchdog.
     iwdg_status = IWDG_init();
     IWDG_stack_error(ERROR_BASE_IWDG);
@@ -78,7 +78,7 @@ int main(void) {
     // Local variables.
     CLI_status_t cli_status = CLI_SUCCESS;
     // Init board.
-    DIM_init_hw();
+    RS485_BRIDGE_init_hw();
     // Main loop.
     while (1) {
         // Enter sleep mode.

@@ -7,12 +7,12 @@
 
 #include "node.h"
 
-#include "dim_flags.h"
 #include "error.h"
 #include "error_base.h"
 #include "mcu_mapping.h"
 #include "nvic_priority.h"
 #include "power.h"
+#include "rs485_bridge_flags.h"
 #include "strings.h"
 #include "types.h"
 #include "una.h"
@@ -54,10 +54,10 @@ typedef NODE_status_t (*NODE_decode_frame_cb_t)(void);
 
 /*** NODE local functions declaration ***/
 
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
 static NODE_status_t _NODE_print_lmac_frame(void);
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
 static NODE_status_t _NODE_print_una_r4s8cr_frame(void);
 #endif
 
@@ -69,12 +69,12 @@ UNA_node_list_t NODES_LIST;
 
 static const NODE_decode_frame_cb_t NODE_DECODE_FRAME_PFN[NODE_PROTOCOL_LAST] = {
     NULL,
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     &_NODE_print_lmac_frame,
 #else
     NULL,
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     &_NODE_print_una_r4s8cr_frame,
 #else
     NULL,
@@ -121,7 +121,7 @@ static void _NODE_flush_rx_buffers(void) {
     node_ctx.rx_buffer_read_index = 0;
 }
 
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
 /*******************************************************************/
 static NODE_status_t _NODE_print_lmac_frame(void) {
     // Local variables.
@@ -180,7 +180,7 @@ errors:
 }
 #endif
 
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
 /*******************************************************************/
 static NODE_status_t _NODE_print_una_r4s8cr_frame(void) {
     // Local variables.
@@ -208,7 +208,7 @@ errors:
 /*******************************************************************/
 static void _NODE_rx_irq_callback(uint8_t data) {
     // Local variables.
-#if ((defined DIM_ENABLE_UNA_AT) || (defined DIM_ENABLE_UNA_R4S8CR))
+#if ((defined RS485_BRIDGE_ENABLE_UNA_AT) || (defined RS485_BRIDGE_ENABLE_UNA_R4S8CR))
     NODE_rx_buffer_t* rx_buffer_ptr = &(node_ctx.rx_buffer[node_ctx.rx_buffer_write_index]);
 #endif
     // Check protocol.
@@ -219,7 +219,7 @@ static void _NODE_rx_irq_callback(uint8_t data) {
             node_ctx.none_protocol_rx_irq_callback(data);
         }
         break;
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     case NODE_PROTOCOL_UNA_AT:
         // Check ending marker.
         if (data == NODE_UNA_AT_FRAME_END_MARKER) {
@@ -232,7 +232,7 @@ static void _NODE_rx_irq_callback(uint8_t data) {
         }
         break;
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     case NODE_PROTOCOL_UNA_R4S8CR:
         // Workaround to handle the LPUART TX/RX switching time issue.
         if ((rx_buffer_ptr->size == 0) && (data != 0xFF)) {
@@ -265,7 +265,7 @@ static NODE_status_t _NODE_start_decoding(void) {
     lpuart_config.baud_rate = node_ctx.baud_rate;
     lpuart_config.nvic_priority = NVIC_PRIORITY_RS485;
     lpuart_config.rxne_irq_callback = &_NODE_rx_irq_callback;
-    lpuart_config.self_address = UNA_NODE_ADDRESS_DIM;
+    lpuart_config.self_address = UNA_NODE_ADDRESS_RS485_BRIDGE;
     lpuart_config.rs485_mode = LPUART_RS485_MODE_DIRECT;
     lpuart_status = LPUART_init(&LPUART_GPIO_RS485, &lpuart_config);
     LPUART_exit_error(NODE_ERROR_BASE_LPUART);
@@ -303,7 +303,7 @@ NODE_status_t NODE_init(NODE_print_frame_cb_t print_frame_callback, NODE_none_pr
     node_ctx.print_frame_callback = print_frame_callback;
     node_ctx.none_protocol_rx_irq_callback = none_protocol_rx_irq_callback;
     // Default configuration.
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     node_ctx.protocol = NODE_PROTOCOL_UNA_AT;
     node_ctx.baud_rate = 1200;
 #else
@@ -388,12 +388,12 @@ errors:
 NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t reg_value, uint32_t reg_mask, UNA_access_status_t* write_status) {
     // Local variables.
     NODE_status_t status = NODE_SUCCESS;
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
     UNA_AT_configuration_t una_at_config;
     uint8_t una_at_init = 0;
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     UNA_R4S8CR_status_t una_r4s8cr_status = UNA_R4S8CR_SUCCESS;
     uint8_t una_r4s8cr_init = 0;
 #endif
@@ -413,7 +413,7 @@ NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t r
     if (status != NODE_SUCCESS) goto errors;
     // Check protocol.
     switch (node_ctx.protocol) {
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     case NODE_PROTOCOL_UNA_AT:
         // Write UNA AT node register.
         una_at_init = 1;
@@ -427,7 +427,7 @@ NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t r
         una_at_init = 0;
         break;
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     case NODE_PROTOCOL_UNA_R4S8CR:
         // Write UNA R4S8CR node register.
         una_r4s8cr_init = 1;
@@ -446,12 +446,12 @@ NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t r
     }
 errors:
     // Force release in case of error.
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     if (una_at_init != 0) {
         UNA_AT_de_init();
     }
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     if (una_r4s8cr_init != 0) {
         UNA_R4S8CR_de_init();
     }
@@ -466,12 +466,12 @@ NODE_status_t NODE_read_register(UNA_node_t* node, uint8_t reg_addr, uint32_t* r
     // Local variables.
     NODE_status_t status = NODE_SUCCESS;
     UNA_access_parameters_t read_params;
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
     UNA_AT_configuration_t una_at_config;
     uint8_t una_at_init = 0;
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     UNA_R4S8CR_status_t una_r4s8cr_status = UNA_R4S8CR_SUCCESS;
     uint8_t una_r4s8cr_init = 0;
 #endif
@@ -490,7 +490,7 @@ NODE_status_t NODE_read_register(UNA_node_t* node, uint8_t reg_addr, uint32_t* r
     if (status != NODE_SUCCESS) goto errors;
     // Check protocol.
     switch (node_ctx.protocol) {
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     case NODE_PROTOCOL_UNA_AT:
         // Write UNA AT node register.
         una_at_init = 1;
@@ -504,7 +504,7 @@ NODE_status_t NODE_read_register(UNA_node_t* node, uint8_t reg_addr, uint32_t* r
         una_at_init = 0;
         break;
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     case NODE_PROTOCOL_UNA_R4S8CR:
         // Write UNA R4S8CR node register.
         una_r4s8cr_init = 1;
@@ -523,12 +523,12 @@ NODE_status_t NODE_read_register(UNA_node_t* node, uint8_t reg_addr, uint32_t* r
     }
 errors:
     // Force release in case of error.
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     if (una_at_init != 0) {
         UNA_AT_de_init();
     }
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     if (una_r4s8cr_init != 0) {
         UNA_R4S8CR_de_init();
     }
@@ -542,12 +542,12 @@ errors:
 NODE_status_t NODE_send_command(UNA_command_parameters_t* command_parameters) {
     // Local variables.
     NODE_status_t status = NODE_SUCCESS;
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
     UNA_AT_configuration_t una_at_config;
     uint8_t una_at_init = 0;
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     UNA_R4S8CR_status_t una_r4s8cr_status = UNA_R4S8CR_SUCCESS;
     uint8_t una_r4s8cr_init = 0;
 #endif
@@ -565,7 +565,7 @@ NODE_status_t NODE_send_command(UNA_command_parameters_t* command_parameters) {
     if (status != NODE_SUCCESS) goto errors;
     // Send command with current protocol.
     switch (node_ctx.protocol) {
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     case NODE_PROTOCOL_UNA_AT:
         // Send command.
         una_at_init = 1;
@@ -579,7 +579,7 @@ NODE_status_t NODE_send_command(UNA_command_parameters_t* command_parameters) {
         una_at_init = 0;
         break;
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     case NODE_PROTOCOL_UNA_R4S8CR:
         // Scan UNA R4S8CR nodes.
         una_r4s8cr_init = 1;
@@ -598,12 +598,12 @@ NODE_status_t NODE_send_command(UNA_command_parameters_t* command_parameters) {
     }
 errors:
     // Force release in case of error.
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     if (una_at_init != 0) {
         UNA_AT_de_init();
     }
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     if (una_r4s8cr_init != 0) {
         UNA_R4S8CR_de_init();
     }
@@ -617,11 +617,11 @@ errors:
 NODE_status_t NODE_scan(void) {
     // Local variables.
     NODE_status_t status = NODE_SUCCESS;
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     UNA_AT_status_t una_at_status = UNA_AT_SUCCESS;
     UNA_AT_configuration_t una_at_config;
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     UNA_R4S8CR_status_t una_r4s8cr_status = UNA_R4S8CR_SUCCESS;
 #endif
     uint8_t nodes_count = 0;
@@ -630,7 +630,7 @@ NODE_status_t NODE_scan(void) {
     if (status != NODE_SUCCESS) goto errors;
     // Reset list.
     UNA_reset_node_list(&NODES_LIST);
-#ifdef DIM_ENABLE_UNA_AT
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     // Scan UNA AT nodes.
     una_at_config.baud_rate = node_ctx.baud_rate;
     una_at_status = UNA_AT_init(&una_at_config);
@@ -642,7 +642,7 @@ NODE_status_t NODE_scan(void) {
     // Update count.
     NODES_LIST.count += nodes_count;
 #endif
-#ifdef DIM_ENABLE_UNA_R4S8CR
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     // Scan UNA R4S8CR nodes.
     una_r4s8cr_status = UNA_R4S8CR_init();
     UNA_R4S8CR_exit_error(NODE_ERROR_BASE_UNA_R4S8CR);
