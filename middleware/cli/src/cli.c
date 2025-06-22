@@ -54,6 +54,9 @@ typedef struct {
 static AT_status_t _CLI_z_callback(void);
 static AT_status_t _CLI_rcc_callback(void);
 static AT_status_t _CLI_adc_callback(void);
+#if (((defined DIM) && (defined HW1_0)) || (defined RS485_BRIDGE))
+static AT_status_t _CLI_vrs_callback(void);
+#endif
 static AT_status_t _CLI_node_scan_callback(void);
 static AT_status_t _CLI_node_get_protocol_callback(void);
 static AT_status_t _CLI_node_set_protocol_callback(void);
@@ -82,6 +85,14 @@ static const AT_command_t CLI_COMMANDS_LIST[] = {
         .description = "Read analog measurements",
         .callback = &_CLI_adc_callback
     },
+#if (((defined DIM) && (defined HW1_0)) || (defined RS485_BRIDGE))
+    {
+        .syntax = "$VRS=",
+        .parameters = "state[dec]",
+        .description = "VRS power control",
+        .callback = &_CLI_vrs_callback
+    },
+#endif
     {
         .syntax = "$SCAN",
         .parameters = NULL,
@@ -234,6 +245,28 @@ errors:
     POWER_disable(POWER_REQUESTER_ID_CLI, POWER_DOMAIN_ANALOG);
     return status;
 }
+
+#if (((defined DIM) && (defined HW1_0)) || (defined RS485_BRIDGE))
+/*******************************************************************/
+static AT_status_t _CLI_vrs_callback(void) {
+    // Local variables.
+    AT_status_t status = AT_SUCCESS;
+    PARSER_status_t parser_status = PARSER_SUCCESS;
+    int32_t state = 0;
+    // Parse state.
+    parser_status = PARSER_get_parameter(cli_ctx.at_parser_ptr, STRING_FORMAT_BOOLEAN, STRING_CHAR_NULL, &state);
+    PARSER_exit_error(AT_ERROR_BASE_PARSER);
+    // Set state.
+    if (state == 0) {
+        POWER_disable(POWER_REQUESTER_ID_CLI, POWER_DOMAIN_RS485);
+    }
+    else {
+        POWER_enable(POWER_REQUESTER_ID_CLI, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_SLEEP);
+    }
+errors:
+    return status;
+}
+#endif
 
 /*******************************************************************/
 static AT_status_t _CLI_node_scan_callback(void) {
