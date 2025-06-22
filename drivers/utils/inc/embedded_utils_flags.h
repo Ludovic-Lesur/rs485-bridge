@@ -27,6 +27,20 @@
 #define EMBEDDED_UTILS_AT_COMMANDS_LIST_SIZE            16
 #define EMBEDDED_UTILS_AT_BUFFER_SIZE                   128
 #ifdef EMBEDDED_UTILS_AT_INTERNAL_COMMANDS_ENABLE
+#ifdef DIM
+#define EMBEDDED_UTILS_AT_BOARD_NAME                    "dim"
+#endif
+#ifdef RS485_BRIDGE
+#define EMBEDDED_UTILS_AT_BOARD_NAME                    "rs485-bridge"
+#endif
+#ifdef HW1_0
+#define EMBEDDED_UTILS_AT_HW_VERSION_MAJOR              1
+#define EMBEDDED_UTILS_AT_HW_VERSION_MINOR              0
+#endif
+#ifdef HW1_1
+#define EMBEDDED_UTILS_AT_HW_VERSION_MAJOR              1
+#define EMBEDDED_UTILS_AT_HW_VERSION_MINOR              1
+#endif
 #define EMBEDDED_UTILS_AT_SW_VERSION_MAJOR              GIT_MAJOR_VERSION
 #define EMBEDDED_UTILS_AT_SW_VERSION_MINOR              GIT_MINOR_VERSION
 #define EMBEDDED_UTILS_AT_SW_VERSION_INDEX              GIT_COMMIT_INDEX
