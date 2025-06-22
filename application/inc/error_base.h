@@ -19,6 +19,7 @@
 #include "error.h"
 #include "terminal.h"
 // Components.
+#include "led.h"
 #include "r4s8cr.h"
 // Middleware.
 #include "analog.h"
@@ -43,7 +44,8 @@ typedef enum {
     // Utils.
     ERROR_BASE_TERMINAL = (ERROR_BASE_LMAC + LMAC_ERROR_BASE_LAST),
     // Components.
-    ERROR_BASE_R4S8CR = (ERROR_BASE_TERMINAL + TERMINAL_ERROR_BASE_LAST),
+    ERROR_BASE_LED = (ERROR_BASE_TERMINAL + TERMINAL_ERROR_BASE_LAST),
+    ERROR_BASE_R4S8CR = (ERROR_BASE_LED + LED_ERROR_BASE_LAST),
     // Middleware.
     ERROR_BASE_ANALOG = (ERROR_BASE_R4S8CR + R4S8CR_ERROR_BASE_LAST),
     ERROR_BASE_CLI = (ERROR_BASE_ANALOG + ANALOG_ERROR_BASE_LAST),

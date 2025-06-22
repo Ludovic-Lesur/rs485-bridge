@@ -18,6 +18,8 @@
 #include "types.h"
 // Utils.
 #include "error.h"
+// Components.
+#include "led.h"
 // Middleware.
 #include "cli.h"
 #include "power.h"
@@ -38,6 +40,7 @@ static void RS485_BRIDGE_init_hw(void) {
 #endif
 #ifdef RS485_BRIDGE
     RCC_pll_configuration_t pll_config;
+    LED_status_t led_status = LED_SUCCESS;
 #endif
     // Init error stack
     ERROR_stack_init();
@@ -93,6 +96,10 @@ static void RS485_BRIDGE_init_hw(void) {
     // Calibrate clocks.
     rcc_status = RCC_calibrate_internal_clocks(NVIC_PRIORITY_CLOCK_CALIBRATION);
     RCC_stack_error(ERROR_BASE_RCC);
+#ifdef RS485_BRIDGE
+    led_status = LED_init();
+    LED_stack_error(ERROR_BASE_LED);
+#endif
     // Init AT interface.
     cli_status = CLI_init();
     CLI_stack_error(ERROR_BASE_CLI);
