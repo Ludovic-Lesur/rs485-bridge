@@ -38,10 +38,17 @@ TERMINAL_status_t TERMINAL_HW_init(uint8_t instance, uint32_t baud_rate, TERMINA
         break;
     case TERMINAL_INSTANCE_CLI:
         // Init USART.
-        usart_config.clock = RCC_CLOCK_HSI;
+        usart_config.clock = RCC_CLOCK_SYSTEM;
         usart_config.baud_rate = baud_rate;
         usart_config.nvic_priority = NVIC_PRIORITY_CLI;
         usart_config.rxne_irq_callback = rx_irq_callback;
+#ifdef RS485_BRIDGE
+        usart_config.parity = USART_PARITY_NONE;
+        usart_config.cm_irq_callback = NULL;
+        usart_config.match_character = 0;
+        usart_config.rs485_mode = USART_RS485_MODE_DISABLED;
+        usart_config.self_address = UNA_NODE_ADDRESS_RS485_BRIDGE;
+#endif
         usart_status = USART_init(USART_INSTANCE_AT, &USART_GPIO_AT, &usart_config);
         USART_exit_error(TERMINAL_ERROR_BASE_HW_INTERFACE);
         break;

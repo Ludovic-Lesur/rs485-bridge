@@ -15,7 +15,12 @@
 
 #define EMBEDDED_UTILS_HW_INTERFACE_ERROR_BASE_LAST     LMAC_ERROR_BASE_LAST
 
+#ifdef DIM
 #define EMBEDDED_UTILS_AT_BAUD_RATE                     9600
+#endif
+#ifdef RS485_BRIDGE
+#define EMBEDDED_UTILS_AT_BAUD_RATE                     115200
+#endif
 #define EMBEDDED_UTILS_AT_REPLY_END                     "\r\n"
 #define EMBEDDED_UTILS_AT_FORCE_OK
 #define EMBEDDED_UTILS_AT_INTERNAL_COMMANDS_ENABLE

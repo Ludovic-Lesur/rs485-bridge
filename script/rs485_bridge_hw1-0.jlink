@@ -1,0 +1,6 @@
+r
+loadfile rs485_bridge_hw1-0/rs485-bridge.hex
+verifyfile rs485_bridge_hw1-0/rs485-bridge.hex
+r
+g
+qc

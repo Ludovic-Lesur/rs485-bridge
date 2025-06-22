@@ -1,12 +1,21 @@
 [submodule "stm32l0xx-device"]
     path = drivers/device/stm32l0xx-device
     url = https://github.com/Ludovic-Lesur/stm32l0xx-device.git
+[submodule "stm32g4xx-device"]
+    path = drivers/device/stm32g4xx-device
+    url = https://github.com/Ludovic-Lesur/stm32g4xx-device.git
 [submodule "stm32l0xx-registers"]
     path = drivers/registers/stm32l0xx-registers
     url = https://github.com/Ludovic-Lesur/stm32l0xx-registers.git
+[submodule "stm32g4xx-registers"]
+    path = drivers/registers/stm32g4xx-registers
+    url = https://github.com/Ludovic-Lesur/stm32g4xx-registers.git
 [submodule "stm32l0xx-drivers"]
     path = drivers/peripherals/stm32l0xx-drivers
     url = https://github.com/Ludovic-Lesur/stm32l0xx-drivers.git
+[submodule "stm32g4xx-drivers"]
+    path = drivers/peripherals/stm32g4xx-drivers
+    url = https://github.com/Ludovic-Lesur/stm32g4xx-drivers.git
 [submodule "embedded-utils"]
     path = drivers/utils/embedded-utils
     url = https://github.com/Ludovic-Lesur/embedded-utils.git

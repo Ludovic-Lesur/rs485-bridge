@@ -16,6 +16,8 @@
 /*** POWER macros ***/
 
 #define POWER_ON_DELAY_MS_ANALOG    100
+#define POWER_ON_DELAY_MS_TCXO      500
+#define POWER_ON_DELAY_MS_TRX       100
 #define POWER_ON_DELAY_MS_RS485     100
 
 /*** POWER structures ***/
@@ -41,7 +43,8 @@ typedef enum {
  * \brief Calling driver identifier.
  *******************************************************************/
 typedef enum {
-    POWER_REQUESTER_ID_NODE = 0,
+    POWER_REQUESTER_ID_MAIN = 0,
+    POWER_REQUESTER_ID_NODE,
     POWER_REQUESTER_ID_CLI,
     POWER_REQUESTER_ID_LAST
 } POWER_requester_id_t;
@@ -52,7 +55,11 @@ typedef enum {
  *******************************************************************/
 typedef enum {
     POWER_DOMAIN_ANALOG = 0,
-#ifdef HW1_0
+#ifdef RS485_BRIDGE
+    POWER_DOMAIN_TCXO,
+    POWER_DOMAIN_TRX,
+#endif
+#if (((defined DIM) && (defined HW1_0)) || (defined RS485_BRIDGE))
     POWER_DOMAIN_RS485,
 #endif
     POWER_DOMAIN_LAST

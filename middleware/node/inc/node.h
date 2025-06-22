@@ -16,6 +16,7 @@
 #include "una.h"
 #include "una_at.h"
 #include "una_r4s8cr.h"
+#include "usart.h"
 
 /*** NODE structures ***/
 
@@ -30,7 +31,8 @@ typedef enum {
     NODE_ERROR_PROTOCOL,
     // Low level drivers errors.
     NODE_ERROR_BASE_LPUART = ERROR_BASE_STEP,
-    NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
+    NODE_ERROR_BASE_USART = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
+    NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_USART + USART_ERROR_BASE_LAST),
     NODE_ERROR_BASE_UNA_AT = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
     NODE_ERROR_BASE_UNA_R4S8CR = (NODE_ERROR_BASE_UNA_AT + UNA_AT_ERROR_BASE_LAST),
     // Last base value.

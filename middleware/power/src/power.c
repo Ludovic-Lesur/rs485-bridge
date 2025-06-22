@@ -40,11 +40,15 @@ void POWER_init(void) {
         power_domain_state[idx] = 0;
     }
     // Init power control pins.
-#ifdef HW1_0
-    GPIO_configure(&GPIO_RS_POWER_ENABLE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
-#endif
-#ifdef HW1_1
+#if (((defined DIM) && (defined HW1_1)) || (defined RS485_BRIDGE))
     GPIO_configure(&GPIO_MNTR_EN, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+#endif
+#ifdef RS485_BRIDGE
+    GPIO_configure(&GPIO_TCXO_POWER_ENABLE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+    GPIO_configure(&GPIO_TRX_POWER_ENABLE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+#endif
+#if (((defined DIM) && (defined HW1_0)) || (defined RS485_BRIDGE))
+    GPIO_configure(&GPIO_RS_POWER_ENABLE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 #endif
 }
 
@@ -73,7 +77,7 @@ void POWER_enable(POWER_requester_id_t requester_id, POWER_domain_t domain, LPTI
     switch (domain) {
     case POWER_DOMAIN_ANALOG:
         // Enable voltage dividers and init ADC.
-#ifdef HW1_1
+#if (((defined DIM) && (defined HW1_1)) || (defined RS485_BRIDGE))
         GPIO_write(&GPIO_MNTR_EN, 1);
         delay_ms = POWER_ON_DELAY_MS_ANALOG;
 #endif
@@ -81,7 +85,17 @@ void POWER_enable(POWER_requester_id_t requester_id, POWER_domain_t domain, LPTI
         analog_status = ANALOG_init();
         _POWER_stack_driver_error(analog_status, ANALOG_SUCCESS, ERROR_BASE_ANALOG, POWER_ERROR_DRIVER_ANALOG);
         break;
-#ifdef HW1_0
+#ifdef RS485_BRIDGE
+    case POWER_DOMAIN_TCXO:
+        GPIO_write(&GPIO_TCXO_POWER_ENABLE, 1);
+        delay_ms = POWER_ON_DELAY_MS_TCXO;
+        break;
+    case POWER_DOMAIN_TRX:
+        GPIO_write(&GPIO_TRX_POWER_ENABLE, 1);
+        delay_ms = POWER_ON_DELAY_MS_TRX;
+        break;
+#endif
+#if (((defined DIM) && (defined HW1_0)) || (defined RS485_BRIDGE))
     case POWER_DOMAIN_RS485:
         // Turn RS power supply on.
         GPIO_write(&GPIO_RS_POWER_ENABLE, 1);
@@ -126,11 +140,19 @@ void POWER_disable(POWER_requester_id_t requester_id, POWER_domain_t domain) {
         analog_status = ANALOG_de_init();
         _POWER_stack_driver_error(analog_status, ANALOG_SUCCESS, ERROR_BASE_ANALOG, POWER_ERROR_DRIVER_ANALOG);
         // Turn analog front-end off.
-#ifdef HW1_1
+#if (((defined DIM) && (defined HW1_1)) || (defined RS485_BRIDGE))
         GPIO_write(&GPIO_MNTR_EN, 0);
 #endif
         break;
-#ifdef HW1_0
+#ifdef RS485_BRIDGE
+    case POWER_DOMAIN_TCXO:
+        GPIO_write(&GPIO_TCXO_POWER_ENABLE, 0);
+        break;
+    case POWER_DOMAIN_TRX:
+        GPIO_write(&GPIO_TRX_POWER_ENABLE, 0);
+        break;
+#endif
+#if (((defined DIM) && (defined HW1_0)) || (defined RS485_BRIDGE))
     case POWER_DOMAIN_RS485:
         // Turn RS power supply off.
         GPIO_write(&GPIO_RS_POWER_ENABLE, 0);

@@ -36,6 +36,9 @@ static void RS485_BRIDGE_init_hw(void) {
 #ifndef RS485_BRIDGE_MODE_DEBUG
     IWDG_status_t iwdg_status = IWDG_SUCCESS;
 #endif
+#ifdef RS485_BRIDGE
+    RCC_pll_configuration_t pll_config;
+#endif
     // Init error stack
     ERROR_stack_init();
     // Init memory.
@@ -54,18 +57,42 @@ static void RS485_BRIDGE_init_hw(void) {
     IWDG_stack_error(ERROR_BASE_IWDG);
     IWDG_reload();
 #endif
+#ifdef DIM
     // High speed oscillator.
     rcc_status = RCC_switch_to_hsi();
     RCC_stack_error(ERROR_BASE_RCC);
-    // Calibrate clocks.
-    rcc_status = RCC_calibrate_internal_clocks(NVIC_PRIORITY_CLOCK_CALIBRATION);
-    RCC_stack_error(ERROR_BASE_RCC);
+#endif
     // Init RTC.
     rtc_status = RTC_init(NULL, NVIC_PRIORITY_RTC);
     RTC_stack_error(ERROR_BASE_RTC);
     // Init delay timer.
     lptim_status = LPTIM_init(NVIC_PRIORITY_DELAY);
     LPTIM_stack_error(ERROR_BASE_LPTIM);
+#ifdef RS485_BRIDGE
+    // Turn TCXO on.
+    POWER_enable(POWER_REQUESTER_ID_MAIN, POWER_DOMAIN_TCXO, LPTIM_DELAY_MODE_SLEEP);
+    // Switch to PLL (system clock 120MHz, ADC clock 8MHz).
+    pll_config.source = RCC_CLOCK_HSE;
+    pll_config.hse_mode = RCC_HSE_MODE_BYPASS;
+    pll_config.m = 2;
+    pll_config.r = RCC_PLL_RQ_2;
+#ifdef RS485_BRIDGE_MODE_LOW_BAUD_RATE
+    // System clock 60MHz, ADC clock 8MHz.
+    pll_config.n = 15;
+    pll_config.p = 15;
+    pll_config.q = RCC_PLL_RQ_4;
+#else
+    // System clock 120MHz, ADC clock 8MHz.
+    pll_config.n = 30;
+    pll_config.p = 30;
+    pll_config.q = RCC_PLL_RQ_8;
+#endif
+    rcc_status = RCC_switch_to_pll(&pll_config);
+    RCC_stack_error(ERROR_BASE_RCC);
+#endif
+    // Calibrate clocks.
+    rcc_status = RCC_calibrate_internal_clocks(NVIC_PRIORITY_CLOCK_CALIBRATION);
+    RCC_stack_error(ERROR_BASE_RCC);
     // Init AT interface.
     cli_status = CLI_init();
     CLI_stack_error(ERROR_BASE_CLI);

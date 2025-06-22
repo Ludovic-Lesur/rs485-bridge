@@ -10,6 +10,10 @@
 
 /*** STM32L0XX DRIVERS compilation flags ***/
 
+#ifndef DIM
+#define STM32L0XX_DRIVERS_DISABLE
+#endif
+
 #define STM32L0XX_DRIVERS_DMA_CHANNEL_MASK              0x00
 
 #define STM32L0XX_DRIVERS_EXTI_GPIO_MASK                0x0000

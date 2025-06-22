@@ -18,6 +18,7 @@
 #include "una.h"
 #include "una_at.h"
 #include "una_r4s8cr.h"
+#include "usart.h"
 
 /*** NODE local macros ***/
 
@@ -259,8 +260,15 @@ static void _NODE_rx_irq_callback(uint8_t data) {
 static NODE_status_t _NODE_start_decoding(void) {
     // Local variables.
     NODE_status_t status = NODE_SUCCESS;
+#ifdef DIM
     LPUART_status_t lpuart_status = LPUART_SUCCESS;
     LPUART_configuration_t lpuart_config;
+#endif
+#ifdef RS485_BRIDGE
+    USART_status_t usart_status = USART_SUCCESS;
+    USART_configuration_t usart_config;
+#endif
+#ifdef DIM
     // Init LPUART.
     lpuart_config.baud_rate = node_ctx.baud_rate;
     lpuart_config.nvic_priority = NVIC_PRIORITY_RS485;
@@ -272,6 +280,24 @@ static NODE_status_t _NODE_start_decoding(void) {
     // Start receiver.
     lpuart_status = LPUART_enable_rx();
     LPUART_exit_error(NODE_ERROR_BASE_LPUART);
+#endif
+#ifdef RS485_BRIDGE
+    // Init USART.
+    usart_config.clock = RCC_CLOCK_SYSTEM;
+    usart_config.baud_rate = node_ctx.baud_rate;
+    usart_config.parity = USART_PARITY_NONE;
+    usart_config.nvic_priority = NVIC_PRIORITY_RS485;
+    usart_config.rxne_irq_callback = &_NODE_rx_irq_callback;
+    usart_config.cm_irq_callback = NULL;
+    usart_config.match_character = 0;
+    usart_config.rs485_mode = USART_RS485_MODE_DIRECT;
+    usart_config.self_address = UNA_NODE_ADDRESS_RS485_BRIDGE;
+    usart_status = USART_init(USART_INSTANCE_RS485, &USART_GPIO_RS485, &usart_config);
+    USART_exit_error(NODE_ERROR_BASE_USART);
+    // Start receiver.
+    usart_status = USART_enable_rx(USART_INSTANCE_RS485);
+    USART_exit_error(NODE_ERROR_BASE_USART);
+#endif
 errors:
     return status;
 }
@@ -280,13 +306,28 @@ errors:
 static NODE_status_t _NODE_stop_decoding(void) {
     // Local variables.
     NODE_status_t status = NODE_SUCCESS;
+#ifdef DIM
     LPUART_status_t lpuart_status = LPUART_SUCCESS;
+#endif
+#ifdef RS485_BRIDGE
+    USART_status_t usart_status = USART_SUCCESS;
+#endif
+#ifdef DIM
     // Stop receiver.
     lpuart_status = LPUART_disable_rx();
     LPUART_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_LPUART);
     // Release LPUART.
     lpuart_status = LPUART_de_init(&LPUART_GPIO_RS485);
     LPUART_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_LPUART);
+#endif
+#ifdef RS485_BRIDGE
+    // Stop receiver.
+    usart_status = USART_disable_rx(USART_INSTANCE_RS485);
+    USART_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_USART);
+    // Release LPUART.
+    usart_status = USART_de_init(USART_INSTANCE_RS485, &USART_GPIO_RS485);
+    USART_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_USART);
+#endif
     return status;
 }
 
@@ -310,8 +351,12 @@ NODE_status_t NODE_init(NODE_print_frame_cb_t print_frame_callback, NODE_none_pr
     node_ctx.protocol = NODE_PROTOCOL_NONE;
     node_ctx.baud_rate = 9600;
 #endif
-#ifdef HW1_0
-    POWER_enable(POWER_REQUESTER_ID_NODE, POWER_DOMAIN_RS485, LPTIM_DELAY_MODE_SLEEP);
+#ifdef RS485_BRIDGE
+    // Init bus control pin.
+    GPIO_configure(&GPIO_BUS_ENABLE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+    // Enable RS485 bus.
+    POWER_enable(POWER_REQUESTER_ID_NODE, POWER_DOMAIN_TRX, LPTIM_DELAY_MODE_SLEEP);
+    GPIO_write(&GPIO_BUS_ENABLE, 1);
 #endif
     // Start reception in UNA_AT protocol mode by default.
     status = _NODE_start_decoding();
@@ -328,6 +373,11 @@ NODE_status_t NODE_de_init(void) {
     // Stop reception.
     node_status = _NODE_stop_decoding();
     NODE_stack_error(ERROR_BASE_NODE);
+#ifdef RS485_BRIDGE
+    // Disable RS485 bus.
+    GPIO_write(&GPIO_BUS_ENABLE, 0);
+    POWER_disable(POWER_REQUESTER_ID_NODE, POWER_DOMAIN_TRX);
+#endif
     return status;
 }
 

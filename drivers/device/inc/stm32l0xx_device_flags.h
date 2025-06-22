@@ -10,6 +10,10 @@
 
 /*** STM32L0XX device compilation flags ***/
 
+#ifndef DIM
+#define STM32L0XX_DEVICE_DISABLE
+#endif
+
 #define STM32L0XX_DEVICE_STACK_SIZE     0x00000400
 #define STM32L0XX_DEVICE_HEAP_SIZE      0x00000C00
 
