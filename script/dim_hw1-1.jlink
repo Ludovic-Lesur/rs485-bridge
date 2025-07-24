@@ -1,6 +1,6 @@
 r
-loadfile dim_hw1-1/rs485-bridge.hex
-verifyfile dim_hw1-1/rs485-bridge.hex
+loadfile dim_hw1-1/dim.hex
+verifyfile dim_hw1-1/dim.hex
 r
 g
 qc
