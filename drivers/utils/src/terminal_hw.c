@@ -15,6 +15,7 @@
 #include "lmac.h"
 #include "mcu_mapping.h"
 #include "nvic_priority.h"
+#include "terminal.h"
 #include "terminal_instance.h"
 #include "types.h"
 #include "usart.h"
