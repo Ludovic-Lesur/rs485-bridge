@@ -34,3 +34,6 @@
 [submodule "una-at"]
     path = middleware/node/una-at
     url = https://github.com/Ludovic-Lesur/una-at.git
+[submodule "cmake-arm-none-eabi"]
+    path = script/cmake-arm-none-eabi
+    url = https://github.com/Ludovic-Lesur/cmake-arm-none-eabi.git

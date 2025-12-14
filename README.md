@@ -10,11 +10,11 @@ The **RS485-BRIDGE** board is an RS485 to UART/USB interface, which can be used 
 
 The boards were designed on **Circuit Maker V2.0**. Below is the list of hardware revisions:
 
-| Hardware revision | Description | Status |
-|:---:|:---:|:---:|
-| [DIM HW1.0](https://365.altium.com/files/3F3B832D-FFF6-457E-A74F-EDA6BAF90587) | Initial version. | :x: |
-| [DIM HW1.1](https://365.altium.com/files/D0E36E2E-D212-4D50-BA3B-173AD1895161) | Add transistor on VRS voltage measurement to save energy consumption. Add jumper on RS485 bus power supply. | :white_check_mark: |
-| [RS485-BRIDGE HW1.0](https://365.altium.com/files/87E26F6B-C53E-4FF7-9692-B11B183856CE) | Upgrade based on STM32G4 MCU. | :hammer: |
+| Hardware revision | Description | `cmake_board` | `cmake_hw_version` | Status |
+|:---:|:---:|:---:|:---:|:---:|
+| [DIM HW1.0](https://365.altium.com/files/3F3B832D-FFF6-457E-A74F-EDA6BAF90587) | Initial version. | `DIM` | `HW1_0` | :x: |
+| [DIM HW1.1](https://365.altium.com/files/D0E36E2E-D212-4D50-BA3B-173AD1895161) | Add transistor on VRS voltage measurement to save energy consumption. Add jumper on RS485 bus power supply. | `DIM` | `HW1_1` | :white_check_mark: |
+| [RS485-BRIDGE HW1.0](https://365.altium.com/files/87E26F6B-C53E-4FF7-9692-B11B183856CE) | Upgrade based on STM32G4 MCU. | `RS485_BRIDGE` | `HW1_0` | :white_check_mark: |
 
 # Embedded software
 
@@ -46,3 +46,21 @@ The project is organized as follow:
     * `node` : **UNA** nodes interface implementation.
     * `power` : Board **power tree** manager.
 * `application` : Main **application**.
+
+## Build
+
+The project can be compiled by command line with `cmake`.
+
+```bash
+mkdir build
+cd build
+cmake -DCMAKE_TOOLCHAIN_FILE="script/cmake-arm-none-eabi/toolchain.cmake" \
+      -DTOOLCHAIN_PATH="<arm_none_eabi_gcc_path>" \
+      -DRS485_BRIDGE_BOARD="<cmake_board>" \
+      -DRS485_BRIDGE_HW_VERSION="<cmake_hw_version>" \
+      -DRS485_BRIDGE_MODE_LOW_BAUD_RATE=ON \
+      -DRS485_BRIDGE_ENABLE_UNA_AT=ON \
+      -DRS485_BRIDGE_ENABLE_UNA_R4S8CRE=ON \
+      -G "Unix Makefiles" ..
+make all
+```
