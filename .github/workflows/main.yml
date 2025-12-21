@@ -1,3 +1,4 @@
+name: MCU binaries build
 on:
   push:
     tags:
