@@ -1,0 +1,40 @@
+{
+    "hw_configuration_list": [
+        {
+            "hw_flags": {
+                "RS485_BRIDGE_BOARD": "DIM",
+                "RS485_BRIDGE_HW_VERSION": "HW1_0"
+            }
+        },
+        {
+            "hw_flags": {
+                "RS485_BRIDGE_BOARD": "DIM",
+                "RS485_BRIDGE_HW_VERSION": "HW1_1"
+            }
+        },
+        {
+            "hw_flags": {
+                "RS485_BRIDGE_BOARD": "RS485_BRIDGE",
+                "RS485_BRIDGE_HW_VERSION": "HW1_0"
+            },
+            "sw_configuration_list": [
+                {
+                    "name": "low-baud-rate",
+                    "sw_flags": {
+                        "RS485_BRIDGE_MODE_LOW_BAUD_RATE" : "ON",
+                        "RS485_BRIDGE_ENABLE_UNA_AT" : "ON",
+                        "RS485_BRIDGE_ENABLE_UNA_R4S8CR" : "ON"
+                    }
+                },
+                {
+                    "name": "high-baud-rate",
+                    "sw_flags": {
+                        "RS485_BRIDGE_MODE_LOW_BAUD_RATE" : "OFF",
+                        "RS485_BRIDGE_ENABLE_UNA_AT" : "ON",
+                        "RS485_BRIDGE_ENABLE_UNA_R4S8CR" : "ON"
+                    }
+                }
+            ]
+        }
+    ]
+}

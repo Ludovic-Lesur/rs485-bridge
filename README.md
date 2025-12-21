@@ -60,7 +60,7 @@ cmake -DCMAKE_TOOLCHAIN_FILE="script/cmake-arm-none-eabi/toolchain.cmake" \
       -DRS485_BRIDGE_HW_VERSION="<cmake_hw_version>" \
       -DRS485_BRIDGE_MODE_LOW_BAUD_RATE=ON \
       -DRS485_BRIDGE_ENABLE_UNA_AT=ON \
-      -DRS485_BRIDGE_ENABLE_UNA_R4S8CRE=ON \
+      -DRS485_BRIDGE_ENABLE_UNA_R4S8CR=ON \
       -G "Unix Makefiles" ..
 make all
 ```
