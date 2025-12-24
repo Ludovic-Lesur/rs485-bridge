@@ -93,7 +93,6 @@ target_sources(${PROJECT_NAME}
         drivers/utils/src/terminal_hw.c
         middleware/analog/src/analog.c
         middleware/cli/src/cli.c
-        middleware/analog/src/analog.c
         middleware/node/src/node.c
         middleware/node/src/una_at_hw.c
         middleware/power/src/power.c
@@ -108,10 +107,10 @@ include_directories(${PROJECT_NAME}
         drivers/registers/${RS485_BRIDGE_MCU}-registers/inc
         drivers/peripherals/inc
         drivers/peripherals/${RS485_BRIDGE_MCU}-drivers/inc
-        drivers/components/inc
-        drivers/components/r4s8cr-driver/inc
         drivers/utils/inc
         drivers/utils/embedded-utils/inc
+        drivers/components/inc
+        drivers/components/r4s8cr-driver/inc
         drivers/mac/inc
         drivers/mac/lmac-driver/inc
         middleware/analog/inc
@@ -125,14 +124,14 @@ include_directories(${PROJECT_NAME}
 )
 
 # Add submodules sources files.
-add_subdirectory(drivers/device/${RS485_BRIDGE_MCU}-device)
-add_subdirectory(drivers/peripherals/${RS485_BRIDGE_MCU}-drivers)
-add_subdirectory(drivers/components/r4s8cr-driver)
-add_subdirectory(drivers/utils/embedded-utils)
-add_subdirectory(drivers/mac/lmac-driver)
-add_subdirectory(middleware/node/una-lib)
-add_subdirectory(middleware/node/una-at)
-add_subdirectory(middleware/node/una-r4s8cr)
+add_subdirectory(drivers/device/${RS485_BRIDGE_MCU}-device EXCLUDE_FROM_ALL)
+add_subdirectory(drivers/peripherals/${RS485_BRIDGE_MCU}-drivers EXCLUDE_FROM_ALL)
+add_subdirectory(drivers/utils/embedded-utils EXCLUDE_FROM_ALL)
+add_subdirectory(drivers/components/r4s8cr-driver EXCLUDE_FROM_ALL)
+add_subdirectory(drivers/mac/lmac-driver EXCLUDE_FROM_ALL)
+add_subdirectory(middleware/node/una-lib EXCLUDE_FROM_ALL)
+add_subdirectory(middleware/node/una-at EXCLUDE_FROM_ALL)
+add_subdirectory(middleware/node/una-r4s8cr EXCLUDE_FROM_ALL)
 
 # Link libraries.
 target_link_libraries(${PROJECT_NAME}
