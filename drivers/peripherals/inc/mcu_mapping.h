@@ -45,6 +45,12 @@
 #define TIM_CHANNEL_LED_BLUE    TIM_CHANNEL_4
 #endif
 
+#ifdef RS485_BRIDGE
+#define TIM_INSTANCE_NODE       TIM_INSTANCE_TIM6
+#else
+#define TIM_INSTANCE_NODE       TIM_INSTANCE_TIM22
+#endif
+
 /*** MCU MAPPING structures ***/
 
 /*!******************************************************************

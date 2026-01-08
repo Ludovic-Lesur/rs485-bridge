@@ -12,6 +12,7 @@
 #include "lpuart.h"
 #include "rs485_bridge_flags.h"
 #include "strings.h"
+#include "tim.h"
 #include "types.h"
 #include "una.h"
 #include "una_at.h"
@@ -31,7 +32,8 @@ typedef enum {
     NODE_ERROR_PROTOCOL,
     // Low level drivers errors.
     NODE_ERROR_BASE_LPUART = ERROR_BASE_STEP,
-    NODE_ERROR_BASE_USART = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
+    NODE_ERROR_BASE_TIM = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
+    NODE_ERROR_BASE_USART = (NODE_ERROR_BASE_TIM + TIM_ERROR_BASE_LAST),
     NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_USART + USART_ERROR_BASE_LAST),
     NODE_ERROR_BASE_UNA_AT = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
     NODE_ERROR_BASE_UNA_R4S8CR = (NODE_ERROR_BASE_UNA_AT + UNA_AT_ERROR_BASE_LAST),

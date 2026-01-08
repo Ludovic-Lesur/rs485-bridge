@@ -50,6 +50,7 @@ R4S8CR_status_t R4S8CR_HW_init(R4S8CR_HW_configuration_t* configuration) {
     // Init USART.
     usart_config.clock = RCC_CLOCK_SYSTEM;
     usart_config.baud_rate = (configuration->uart_baud_rate);
+    usart_config.auto_baud_rate_mode = USART_AUTO_BAUD_RATE_MODE_DISABLED;
     usart_config.parity = USART_PARITY_NONE;
     usart_config.nvic_priority = NVIC_PRIORITY_RS485;
     usart_config.rxne_irq_callback = (configuration->rx_irq_callback);

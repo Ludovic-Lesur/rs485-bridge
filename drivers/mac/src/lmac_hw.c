@@ -52,6 +52,7 @@ LMAC_status_t LMAC_HW_init(uint32_t baud_rate, LMAC_rx_irq_cb_t rx_irq_callback,
     // Init USART.
     usart_config.clock = RCC_CLOCK_SYSTEM;
     usart_config.baud_rate = baud_rate;
+    usart_config.auto_baud_rate_mode = USART_AUTO_BAUD_RATE_MODE_DISABLED;
     usart_config.parity = USART_PARITY_NONE;
     usart_config.nvic_priority = NVIC_PRIORITY_RS485;
     usart_config.rxne_irq_callback = rx_irq_callback;

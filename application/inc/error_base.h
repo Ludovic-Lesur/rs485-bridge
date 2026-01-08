@@ -13,6 +13,7 @@
 #include "lptim.h"
 #include "rcc.h"
 #include "rtc.h"
+#include "tim.h"
 // MAC.
 #include "lmac.h"
 // Utils.
@@ -39,8 +40,9 @@ typedef enum {
     ERROR_BASE_LPTIM = (ERROR_BASE_IWDG + IWDG_ERROR_BASE_LAST),
     ERROR_BASE_RCC = (ERROR_BASE_LPTIM + LPTIM_ERROR_BASE_LAST),
     ERROR_BASE_RTC = (ERROR_BASE_RCC + RCC_ERROR_BASE_LAST),
+    ERROR_BASE_TIM_NODE = (ERROR_BASE_RTC + RTC_ERROR_BASE_LAST),
     // MAC.
-    ERROR_BASE_LMAC = (ERROR_BASE_RTC + RTC_ERROR_BASE_LAST),
+    ERROR_BASE_LMAC = (ERROR_BASE_TIM_NODE + TIM_ERROR_BASE_LAST),
     // Utils.
     ERROR_BASE_TERMINAL = (ERROR_BASE_LMAC + LMAC_ERROR_BASE_LAST),
     // Components.

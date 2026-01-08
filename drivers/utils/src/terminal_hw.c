@@ -44,6 +44,7 @@ TERMINAL_status_t TERMINAL_HW_init(uint8_t instance, uint32_t baud_rate, TERMINA
         usart_config.nvic_priority = NVIC_PRIORITY_CLI;
         usart_config.rxne_irq_callback = rx_irq_callback;
 #ifdef RS485_BRIDGE
+        usart_config.auto_baud_rate_mode = USART_AUTO_BAUD_RATE_MODE_DISABLED;
         usart_config.parity = USART_PARITY_NONE;
         usart_config.cm_irq_callback = NULL;
         usart_config.match_character = 0;

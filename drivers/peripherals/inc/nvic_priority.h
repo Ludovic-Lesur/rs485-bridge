@@ -20,8 +20,9 @@ typedef enum {
     NVIC_PRIORITY_RTC = 3,
     // RS485 interface.
     NVIC_PRIORITY_RS485 = 0,
+    NVIC_PRIORITY_TIM_NODE = 1,
     // AT interface.
-    NVIC_PRIORITY_CLI = 1
+    NVIC_PRIORITY_CLI = 2
 } NVIC_priority_list_t;
 
 #endif /* __NVIC_PRIORITY_H__ */
