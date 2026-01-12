@@ -358,6 +358,8 @@ static NODE_status_t _NODE_start_decoding(void) {
     USART_status_t usart_status = USART_SUCCESS;
     USART_configuration_t usart_config;
 #endif
+    // Flush RX buffers.
+    _NODE_flush_rx_buffers();
 #ifdef DIM
     // Init LPUART.
     lpuart_config.baud_rate = node_ctx.baud_rate;
@@ -388,6 +390,8 @@ static NODE_status_t _NODE_start_decoding(void) {
     // Start receiver.
     usart_status = USART_enable_rx(USART_INSTANCE_RS485);
     USART_exit_error(NODE_ERROR_BASE_USART);
+    usart_status = USART_auto_baud_rate_request(USART_INSTANCE_RS485);
+    USART_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_USART);
 #endif
 errors:
     return status;
