@@ -54,6 +54,8 @@ typedef struct {
     uint8_t rx_buffer_read_index;
     NODE_protocol_t protocol;
     uint32_t baud_rate;
+    NODE_protocol_t manual_protocol;
+    uint32_t manual_baud_rate;
 } NODE_context_t;
 
 /*******************************************************************/
@@ -99,8 +101,10 @@ static NODE_context_t node_ctx = {
     },
     .rx_buffer_write_index = 0,
     .rx_buffer_read_index = 0,
-    .protocol = NODE_PROTOCOL_NONE,
-    .baud_rate = 1200
+    .protocol = NODE_PROTOCOL_UNA_AT,
+    .baud_rate = 1200,
+    .manual_protocol = NODE_PROTOCOL_UNA_AT,
+    .manual_baud_rate = 1200,
 };
 
 /*** NODE local functions ***/
@@ -529,8 +533,8 @@ NODE_status_t NODE_set_protocol(NODE_protocol_t protocol, uint32_t baud_rate) {
     // Flush buffer.
     _NODE_flush_rx_buffers();
     // Update context.
-    node_ctx.protocol = protocol;
-    node_ctx.baud_rate = baud_rate;
+    node_ctx.manual_protocol = protocol;
+    node_ctx.manual_baud_rate = baud_rate;
 errors:
     return status;
 }
@@ -544,8 +548,8 @@ NODE_status_t NODE_get_protocol(NODE_protocol_t* protocol, uint32_t* baud_rate) 
         status = NODE_ERROR_NULL_PARAMETER;
         goto errors;
     }
-    (*protocol) = node_ctx.protocol;
-    (*baud_rate) = node_ctx.baud_rate;
+    (*protocol) = node_ctx.manual_protocol;
+    (*baud_rate) = node_ctx.manual_baud_rate;
 errors:
     return status;
 }
@@ -578,12 +582,12 @@ NODE_status_t NODE_write_register(UNA_node_t* node, uint8_t reg_addr, uint32_t r
     status = _NODE_stop_decoding();
     if (status != NODE_SUCCESS) goto errors;
     // Check protocol.
-    switch (node_ctx.protocol) {
+    switch (node_ctx.manual_protocol) {
 #ifdef RS485_BRIDGE_ENABLE_UNA_AT
     case NODE_PROTOCOL_UNA_AT:
         // Write UNA AT node register.
         una_at_init = 1;
-        una_at_config.baud_rate = node_ctx.baud_rate;
+        una_at_config.baud_rate = node_ctx.manual_baud_rate;
         una_at_status = UNA_AT_init(&una_at_config);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
         una_at_status = UNA_AT_write_register(&write_params, reg_value, reg_mask, write_status);
@@ -655,12 +659,12 @@ NODE_status_t NODE_read_register(UNA_node_t* node, uint8_t reg_addr, uint32_t* r
     status = _NODE_stop_decoding();
     if (status != NODE_SUCCESS) goto errors;
     // Check protocol.
-    switch (node_ctx.protocol) {
+    switch (node_ctx.manual_protocol) {
 #ifdef RS485_BRIDGE_ENABLE_UNA_AT
     case NODE_PROTOCOL_UNA_AT:
         // Write UNA AT node register.
         una_at_init = 1;
-        una_at_config.baud_rate = node_ctx.baud_rate;
+        una_at_config.baud_rate = node_ctx.manual_baud_rate;
         una_at_status = UNA_AT_init(&una_at_config);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
         una_at_status = UNA_AT_read_register(&read_params, reg_value, read_status);
@@ -730,12 +734,12 @@ NODE_status_t NODE_send_command(UNA_command_parameters_t* command_parameters) {
     status = _NODE_stop_decoding();
     if (status != NODE_SUCCESS) goto errors;
     // Send command with current protocol.
-    switch (node_ctx.protocol) {
+    switch (node_ctx.manual_protocol) {
 #ifdef RS485_BRIDGE_ENABLE_UNA_AT
     case NODE_PROTOCOL_UNA_AT:
         // Send command.
         una_at_init = 1;
-        una_at_config.baud_rate = node_ctx.baud_rate;
+        una_at_config.baud_rate = node_ctx.manual_baud_rate;
         una_at_status = UNA_AT_init(&una_at_config);
         UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
         una_at_status = UNA_AT_send_command(command_parameters);
@@ -798,7 +802,7 @@ NODE_status_t NODE_scan(void) {
     UNA_reset_node_list(&NODES_LIST);
 #ifdef RS485_BRIDGE_ENABLE_UNA_AT
     // Scan UNA AT nodes.
-    una_at_config.baud_rate = node_ctx.baud_rate;
+    una_at_config.baud_rate = node_ctx.manual_baud_rate;
     una_at_status = UNA_AT_init(&una_at_config);
     UNA_AT_exit_error(NODE_ERROR_BASE_UNA_AT);
     una_at_status = UNA_AT_scan(&(NODES_LIST.list[NODES_LIST.count]), (UNA_NODE_ADDRESS_LAST - NODES_LIST.count), &nodes_count);
@@ -819,9 +823,8 @@ NODE_status_t NODE_scan(void) {
     // Update count.
     NODES_LIST.count += nodes_count;
 #endif
-    // Re-start reception.
-    status = _NODE_start_decoding();
-    if (status != NODE_SUCCESS) goto errors;
 errors:
+    // Re-start reception.
+    _NODE_start_decoding();
     return status;
 }
