@@ -42,14 +42,14 @@ LED_status_t LED_de_init(void) {
 }
 
 /*******************************************************************/
-LED_status_t LED_single_pulse(uint32_t pulse_duration_ms, LED_color_t color, uint8_t pulse_completion_event) {
+LED_status_t LED_single_pulse(uint32_t pulse_duration_us, LED_color_t color, uint8_t pulse_completion_event) {
     // Local variables.
     LED_status_t status = LED_SUCCESS;
     TIM_status_t tim_status = TIM_SUCCESS;
     uint8_t channels_mask = 0;
     uint8_t idx = 0;
     // Check parameters.
-    if (pulse_duration_ms == 0) {
+    if (pulse_duration_us == 0) {
         status = LED_ERROR_NULL_DURATION;
         goto errors;
     }
@@ -63,7 +63,7 @@ LED_status_t LED_single_pulse(uint32_t pulse_duration_ms, LED_color_t color, uin
         channels_mask |= (((color >> idx) & 0x01) << ((TIM_GPIO_LED.list[idx])->channel));
     }
     // Make pulse on channel.
-    tim_status = TIM_OPM_make_pulse(TIM_INSTANCE_LED, channels_mask, 0, (pulse_duration_ms * MATH_POWER_10[6]), pulse_completion_event);
+    tim_status = TIM_OPM_make_pulse(TIM_INSTANCE_LED, channels_mask, 0, pulse_duration_us, pulse_completion_event);
     TIM_exit_error(LED_ERROR_BASE_TIM_OPM);
 errors:
     return status;

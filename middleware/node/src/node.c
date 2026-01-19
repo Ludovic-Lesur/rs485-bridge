@@ -23,19 +23,21 @@
 
 /*** NODE local macros ***/
 
-#define NODE_RX_BUFFER_DEPTH                    16
-#define NODE_RX_BUFFER_SIZE_BYTES               128
+#define NODE_RX_BUFFER_DEPTH                        16
+#define NODE_RX_BUFFER_SIZE_BYTES                   128
 
-#define NODE_PROTOCOL_BAUD_RATE_THRESHOLD       5400
+#define NODE_PROTOCOL_BAUD_RATE_THRESHOLD           5400
 
-#define NODE_UNA_AT_FRAME_SIZE_BYTES_MIN        6
-#define NODE_UNA_AT_FRAME_END_MARKER            0x7F
+#define NODE_UNA_AT_FRAME_SIZE_BYTES_MIN            6
+#define NODE_UNA_AT_FRAME_END_MARKER                0x7F
 
-#define NODE_UNA_R4S8CR_FRAME_SIZE_BYTES_MIN    3
-#define NODE_UNA_R4S8CR_FRAME_DURATION_MS_MAX   15
-#define NODE_UNA_R4S8CR_FRAME_START_MARKER      0xFF
+#define NODE_AUTO_BAUD_RATE_REQUEST_PERIOD_MS       100
 
-#define NODE_DEFAULT_TIMEOUT_MS                 5000
+#define NODE_UNA_R4S8CR_FRAME_SIZE_BYTES_MIN        3
+#define NODE_UNA_R4S8CR_FRAME_DURATION_MS_MAX       15
+#define NODE_UNA_R4S8CR_FRAME_START_MARKER          0xFF
+
+#define NODE_DEFAULT_TIMEOUT_MS                     5000
 
 /*** NODE local structures ***/
 
@@ -56,6 +58,9 @@ typedef struct {
     uint32_t baud_rate;
     NODE_protocol_t manual_protocol;
     uint32_t manual_baud_rate;
+#ifdef RS485_BRIDGE
+    volatile uint32_t auto_baud_rate_blank_time_ms;
+#endif
 } NODE_context_t;
 
 /*******************************************************************/
@@ -105,6 +110,9 @@ static NODE_context_t node_ctx = {
     .baud_rate = 1200,
     .manual_protocol = NODE_PROTOCOL_UNA_AT,
     .manual_baud_rate = 1200,
+#ifdef RS485_BRIDGE
+    .auto_baud_rate_blank_time_ms = 0,
+#endif
 };
 
 /*** NODE local functions ***/
@@ -260,7 +268,7 @@ errors:
 
 #ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
 /*******************************************************************/
-static void _NODE_una_r4s8cr_frame_timeout(void) {
+static void _NODE_una_r4s8cr_frame_timer_irq_callback(void) {
     // Local variables.
     TIM_status_t tim_status = TIM_SUCCESS;
 #ifdef RS485_BRIDGE
@@ -274,8 +282,8 @@ static void _NODE_una_r4s8cr_frame_timeout(void) {
     USART_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_USART);
 #endif
     // Stop timer.
-    tim_status = TIM_STD_stop(TIM_INSTANCE_NODE);
-    TIM_stack_error(ERROR_BASE_TIM_NODE);
+    tim_status = TIM_STD_stop(TIM_INSTANCE_NODE_UNA_R4S8CR);
+    TIM_stack_error(ERROR_BASE_TIM_NODE_UNA_R4S8CR);
 }
 #endif
 
@@ -290,6 +298,10 @@ static void _NODE_rx_irq_callback(uint8_t data) {
 #endif
 #if ((defined RS485_BRIDGE_ENABLE_UNA_AT) || (defined RS485_BRIDGE_ENABLE_UNA_R4S8CR))
     volatile NODE_rx_buffer_t* rx_buffer_ptr = &(node_ctx.rx_buffer[node_ctx.rx_buffer_write_index]);
+#endif
+#ifdef RS485_BRIDGE
+    // Lock periodic auto baud rate request.
+    node_ctx.auto_baud_rate_blank_time_ms = 0;
 #endif
     // Check protocol.
     switch (node_ctx.protocol) {
@@ -334,11 +346,11 @@ static void _NODE_rx_irq_callback(uint8_t data) {
             rx_buffer_ptr = &(node_ctx.rx_buffer[node_ctx.rx_buffer_write_index]);
             // Start frame timer.
 #ifdef RS485_BRIDGE
-            tim_status = TIM_STD_start(TIM_INSTANCE_NODE, RCC_CLOCK_SYSTEM, NODE_UNA_R4S8CR_FRAME_DURATION_MS_MAX, TIM_UNIT_MS, &_NODE_una_r4s8cr_frame_timeout);
+            tim_status = TIM_STD_start(TIM_INSTANCE_NODE_UNA_R4S8CR, RCC_CLOCK_SYSTEM, NODE_UNA_R4S8CR_FRAME_DURATION_MS_MAX, TIM_UNIT_MS, &_NODE_una_r4s8cr_frame_timer_irq_callback);
 #else
-            tim_status = TIM_STD_start(TIM_INSTANCE_NODE, NODE_UNA_R4S8CR_FRAME_DURATION_MS_MAX, TIM_UNIT_MS, &_NODE_una_r4s8cr_frame_timeout);
+            tim_status = TIM_STD_start(TIM_INSTANCE_NODE_UNA_R4S8CR, NODE_UNA_R4S8CR_FRAME_DURATION_MS_MAX, TIM_UNIT_MS, &_NODE_una_r4s8cr_frame_timer_irq_callback);
 #endif
-            TIM_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_TIM);
+            TIM_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_TIM_UNA_R4S8CR);
         }
         // Fill buffer.
         rx_buffer_ptr->buffer[rx_buffer_ptr->size] = data;
@@ -349,6 +361,22 @@ static void _NODE_rx_irq_callback(uint8_t data) {
         break;
     }
 }
+
+#ifdef RS485_BRIDGE
+/*******************************************************************/
+static void _NODE_auto_baud_rate_request_timer_irq_callback(void) {
+    // Local variables.
+    USART_status_t usart_status = USART_SUCCESS;
+    // Update time.
+    node_ctx.auto_baud_rate_blank_time_ms += NODE_AUTO_BAUD_RATE_REQUEST_PERIOD_MS;
+    // Check blank time.
+    if (node_ctx.auto_baud_rate_blank_time_ms > NODE_AUTO_BAUD_RATE_REQUEST_PERIOD_MS) {
+        // Start new baud rate detection.
+        usart_status = USART_auto_baud_rate_request(USART_INSTANCE_RS485);
+        USART_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_USART);
+    }
+}
+#endif
 
 /*******************************************************************/
 static NODE_status_t _NODE_start_decoding(void) {
@@ -361,6 +389,7 @@ static NODE_status_t _NODE_start_decoding(void) {
 #ifdef RS485_BRIDGE
     USART_status_t usart_status = USART_SUCCESS;
     USART_configuration_t usart_config;
+    TIM_status_t tim_status = TIM_SUCCESS;
 #endif
     // Flush RX buffers.
     _NODE_flush_rx_buffers();
@@ -395,7 +424,10 @@ static NODE_status_t _NODE_start_decoding(void) {
     usart_status = USART_enable_rx(USART_INSTANCE_RS485);
     USART_exit_error(NODE_ERROR_BASE_USART);
     usart_status = USART_auto_baud_rate_request(USART_INSTANCE_RS485);
-    USART_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_USART);
+    USART_exit_error(NODE_ERROR_BASE_USART);
+    // Start auto baud-rate timer.
+    tim_status = TIM_STD_start(TIM_INSTANCE_NODE_AUTO_BAUD_RATE_REQUEST, RCC_CLOCK_SYSTEM, NODE_AUTO_BAUD_RATE_REQUEST_PERIOD_MS, TIM_UNIT_MS, &_NODE_auto_baud_rate_request_timer_irq_callback);
+    TIM_exit_error(NODE_ERROR_BASE_TIM_AUTO_BAUD_RATE_REQUEST);
 #endif
 errors:
     return status;
@@ -410,6 +442,7 @@ static NODE_status_t _NODE_stop_decoding(void) {
 #endif
 #ifdef RS485_BRIDGE
     USART_status_t usart_status = USART_SUCCESS;
+    TIM_status_t tim_status = TIM_SUCCESS;
 #endif
 #ifdef DIM
     // Stop receiver.
@@ -420,6 +453,9 @@ static NODE_status_t _NODE_stop_decoding(void) {
     LPUART_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_LPUART);
 #endif
 #ifdef RS485_BRIDGE
+    // Start auto baud-rate timer.
+    tim_status = TIM_STD_stop(TIM_INSTANCE_NODE_AUTO_BAUD_RATE_REQUEST);
+    TIM_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_TIM_AUTO_BAUD_RATE_REQUEST);
     // Stop receiver.
     usart_status = USART_disable_rx(USART_INSTANCE_RS485);
     USART_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_USART);
@@ -459,10 +495,14 @@ NODE_status_t NODE_init(NODE_print_frame_cb_t print_frame_callback, NODE_none_pr
     // Enable RS485 bus.
     POWER_enable(POWER_REQUESTER_ID_NODE, POWER_DOMAIN_TRX, LPTIM_DELAY_MODE_SLEEP);
     GPIO_write(&GPIO_BUS_ENABLE, 1);
+    // Init auto baud-rate timer.
+    tim_status = TIM_STD_init(TIM_INSTANCE_NODE_AUTO_BAUD_RATE_REQUEST, NVIC_PRIORITY_TIM_NODE_AUTO_BAUD_RATE_REQUEST);
+    TIM_exit_error(NODE_ERROR_BASE_TIM_AUTO_BAUD_RATE_REQUEST);
 #endif
 #ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
-    tim_status = TIM_STD_init(TIM_INSTANCE_NODE, NVIC_PRIORITY_TIM_NODE);
-    TIM_exit_error(NODE_ERROR_BASE_TIM);
+    // Init R4S8CR frame timer.
+    tim_status = TIM_STD_init(TIM_INSTANCE_NODE_UNA_R4S8CR, NVIC_PRIORITY_TIM_NODE_UNA_R4S8CR);
+    TIM_exit_error(NODE_ERROR_BASE_TIM_UNA_R4S8CR);
 #endif
     // Start reception in UNA_AT protocol mode by default.
     status = _NODE_start_decoding();
@@ -486,10 +526,14 @@ NODE_status_t NODE_de_init(void) {
     // Disable RS485 bus.
     GPIO_write(&GPIO_BUS_ENABLE, 0);
     POWER_disable(POWER_REQUESTER_ID_NODE, POWER_DOMAIN_TRX);
+    // Release auto baud-rate timer.
+    tim_status = TIM_STD_de_init(TIM_INSTANCE_NODE_AUTO_BAUD_RATE_REQUEST);
+    TIM_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_TIM_AUTO_BAUD_RATE_REQUEST);
 #endif
 #ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
-    tim_status = TIM_STD_de_init(TIM_INSTANCE_NODE);
-    TIM_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_TIM);
+    // Release R4S8CR frame timer.
+    tim_status = TIM_STD_de_init(TIM_INSTANCE_NODE_UNA_R4S8CR);
+    TIM_stack_error(ERROR_BASE_NODE + NODE_ERROR_BASE_TIM_UNA_R4S8CR);
 #endif
     return status;
 }

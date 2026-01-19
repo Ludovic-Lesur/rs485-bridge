@@ -67,7 +67,7 @@ static const TIM_channel_gpio_t* const TIM_CHANNEL_GPIO_LIST_LED[TIM_CHANNEL_IND
 
 #ifdef RS485_BRIDGE
 // TCXO power control
-const GPIO_pin_t GPIO_TCXO_POWER_ENABLE = { GPIOA, 0, 0, 15 };
+const GPIO_pin_t GPIO_TCXO_POWER_ENABLE = { GPIOA, 0, 15, 0 };
 #endif
 // Analog inputs.
 #if ((defined DIM) && (defined HW1_1))

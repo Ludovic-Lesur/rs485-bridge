@@ -17,38 +17,39 @@
 /*** MCU MAPPING macros ***/
 
 #ifdef DIM
-#define ADC_CHANNEL_VRS         ADC_CHANNEL_IN4
-#define ADC_CHANNEL_VUSB        ADC_CHANNEL_IN5
+#define ADC_CHANNEL_VRS                             ADC_CHANNEL_IN4
+#define ADC_CHANNEL_VUSB                            ADC_CHANNEL_IN5
 #endif
 #ifdef RS485_BRIDGE
-#define ADC_INSTANCE_VMCU_TMCU  ADC_INSTANCE_ADC1
-#define ADC_INSTANCE_GPIO       ADC_INSTANCE_ADC2
-#define ADC_CHANNEL_VRS         ADC_CHANNEL_IN3
-#define ADC_CHANNEL_VUSB        ADC_CHANNEL_IN4
+#define ADC_INSTANCE_VMCU_TMCU                      ADC_INSTANCE_ADC1
+#define ADC_INSTANCE_GPIO                           ADC_INSTANCE_ADC2
+#define ADC_CHANNEL_VRS                             ADC_CHANNEL_IN3
+#define ADC_CHANNEL_VUSB                            ADC_CHANNEL_IN4
 #endif
 
 #ifdef DIM
-#define USART_INSTANCE_AT       USART_INSTANCE_USART2
+#define USART_INSTANCE_AT                           USART_INSTANCE_USART2
 #endif
 #ifdef RS485_BRIDGE
-#define USART_INSTANCE_AT       USART_INSTANCE_USART1
-#endif
-
-#ifdef RS485_BRIDGE
-#define USART_INSTANCE_RS485    USART_INSTANCE_USART2
+#define USART_INSTANCE_AT                           USART_INSTANCE_USART1
 #endif
 
 #ifdef RS485_BRIDGE
-#define TIM_INSTANCE_LED        TIM_INSTANCE_TIM3
-#define TIM_CHANNEL_LED_RED     TIM_CHANNEL_1
-#define TIM_CHANNEL_LED_GREEN   TIM_CHANNEL_2
-#define TIM_CHANNEL_LED_BLUE    TIM_CHANNEL_4
+#define USART_INSTANCE_RS485                        USART_INSTANCE_USART2
 #endif
 
 #ifdef RS485_BRIDGE
-#define TIM_INSTANCE_NODE       TIM_INSTANCE_TIM6
+#define TIM_INSTANCE_LED                            TIM_INSTANCE_TIM3
+#define TIM_CHANNEL_LED_RED                         TIM_CHANNEL_1
+#define TIM_CHANNEL_LED_GREEN                       TIM_CHANNEL_2
+#define TIM_CHANNEL_LED_BLUE                        TIM_CHANNEL_4
+#endif
+
+#ifdef RS485_BRIDGE
+#define TIM_INSTANCE_NODE_AUTO_BAUD_RATE_REQUEST    TIM_INSTANCE_TIM7
+#define TIM_INSTANCE_NODE_UNA_R4S8CR                TIM_INSTANCE_TIM6
 #else
-#define TIM_INSTANCE_NODE       TIM_INSTANCE_TIM22
+#define TIM_INSTANCE_NODE_UNA_R4S8CR                TIM_INSTANCE_TIM22
 #endif
 
 /*** MCU MAPPING structures ***/
