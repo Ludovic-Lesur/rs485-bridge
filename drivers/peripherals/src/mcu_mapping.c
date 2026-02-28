@@ -17,15 +17,15 @@
 
 // Analog inputs.
 #ifdef DIM
-static const GPIO_pin_t GPIO_ADC_VRS_MEASURE = { GPIOA, 0, 4, 0 };
-static const GPIO_pin_t GPIO_ADC_VUSB_MEASURE = { GPIOA, 0, 5, 0 };
+static const GPIO_pin_t GPIO_ADC_RS485_BUS_VOLTAGE_MEASURE = { GPIOA, 0, 4, 0 };
+static const GPIO_pin_t GPIO_ADC_USB_VOLTAGE_MEASURE = { GPIOA, 0, 5, 0 };
 #endif
 #ifdef RS485_BRIDGE
-static const GPIO_pin_t GPIO_ADC_VRS_MEASURE = { GPIOA, 0, 6, 0 };
-static const GPIO_pin_t GPIO_ADC_VUSB_MEASURE = { GPIOA, 0, 7, 0 };
+static const GPIO_pin_t GPIO_ADC_RS485_BUS_VOLTAGE_MEASURE = { GPIOA, 0, 6, 0 };
+static const GPIO_pin_t GPIO_ADC_USB_VOLTAGE_MEASURE = { GPIOA, 0, 7, 0 };
 #endif
 // Analog inputs list.
-static const GPIO_pin_t* const GPIO_ADC_PINS_LIST[ADC_CHANNEL_INDEX_LAST] = { &GPIO_ADC_VRS_MEASURE, &GPIO_ADC_VUSB_MEASURE };
+static const GPIO_pin_t* const GPIO_ADC_PINS_LIST[ADC_CHANNEL_INDEX_LAST] = { &GPIO_ADC_RS485_BUS_VOLTAGE_MEASURE, &GPIO_ADC_USB_VOLTAGE_MEASURE };
 #ifdef DIM
 // LPUART1.
 static const GPIO_pin_t GPIO_LPUART1_TX = { GPIOA, 0, 2, 6 };
@@ -77,12 +77,12 @@ const GPIO_pin_t GPIO_MNTR_EN = { GPIOA, 0, 0, 0 };
 const GPIO_pin_t GPIO_MNTR_EN = { GPIOB, 1, 0, 0 };
 #endif
 const ADC_gpio_t ADC_GPIO = { (const GPIO_pin_t**) &GPIO_ADC_PINS_LIST, ADC_CHANNEL_INDEX_LAST };
-// VRS power control.
+// RS485 bus power control.
 #if ((defined DIM) && (defined HW1_0))
-const GPIO_pin_t GPIO_RS_POWER_ENABLE = { GPIOA, 0, 0, 0 };
+const GPIO_pin_t GPIO_RS485_BUS_POWER_ENABLE = { GPIOA, 0, 0, 0 };
 #endif
 #ifdef RS485_BRIDGE
-const GPIO_pin_t GPIO_RS_POWER_ENABLE = { GPIOA, 0, 8, 0 };
+const GPIO_pin_t GPIO_RS485_BUS_POWER_ENABLE = { GPIOA, 0, 8, 0 };
 #endif
 // RS485 interface.
 #ifdef RS485_BRIDGE

@@ -17,14 +17,14 @@
 /*** MCU MAPPING macros ***/
 
 #ifdef DIM
-#define ADC_CHANNEL_VRS                             ADC_CHANNEL_IN4
-#define ADC_CHANNEL_VUSB                            ADC_CHANNEL_IN5
+#define ADC_CHANNEL_RS485_BUS_VOLTAGE               ADC_CHANNEL_IN4
+#define ADC_CHANNEL_USB_VOLTAGE                     ADC_CHANNEL_IN5
 #endif
 #ifdef RS485_BRIDGE
-#define ADC_INSTANCE_VMCU_TMCU                      ADC_INSTANCE_ADC1
+#define ADC_INSTANCE_MCU                            ADC_INSTANCE_ADC1
 #define ADC_INSTANCE_GPIO                           ADC_INSTANCE_ADC2
-#define ADC_CHANNEL_VRS                             ADC_CHANNEL_IN3
-#define ADC_CHANNEL_VUSB                            ADC_CHANNEL_IN4
+#define ADC_CHANNEL_RS485_BUS_VOLTAGE               ADC_CHANNEL_IN3
+#define ADC_CHANNEL_USB_VOLTAGE                     ADC_CHANNEL_IN4
 #endif
 
 #ifdef DIM
@@ -59,8 +59,8 @@
  * \brief ADC channels index.
  *******************************************************************/
 typedef enum {
-    ADC_CHANNEL_INDEX_VRS = 0,
-    ADC_CHANNEL_INDEX_VUSB,
+    ADC_CHANNEL_INDEX_RS485_BUS_VOLTAGE = 0,
+    ADC_CHANNEL_INDEX_USB_VOLTAGE,
     ADC_CHANNEL_INDEX_LAST
 } ADC_channel_index_t;
 
@@ -88,9 +88,9 @@ extern const GPIO_pin_t GPIO_TCXO_POWER_ENABLE;
 extern const GPIO_pin_t GPIO_MNTR_EN;
 #endif
 extern const ADC_gpio_t ADC_GPIO;
-// VRS power control.
+// RS485 bus power control.
 #if (((defined DIM) && (defined HW1_0)) || (defined RS485_BRIDGE))
-extern const GPIO_pin_t GPIO_RS_POWER_ENABLE;
+extern const GPIO_pin_t GPIO_RS485_BUS_POWER_ENABLE;
 #endif
 // RS485 interface.
 #ifdef RS485_BRIDGE

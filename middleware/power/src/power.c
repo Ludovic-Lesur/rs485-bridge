@@ -48,7 +48,7 @@ void POWER_init(void) {
     GPIO_configure(&GPIO_TRX_POWER_ENABLE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 #endif
 #if (((defined DIM) && (defined HW1_0)) || (defined RS485_BRIDGE))
-    GPIO_configure(&GPIO_RS_POWER_ENABLE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
+    GPIO_configure(&GPIO_RS485_BUS_POWER_ENABLE, GPIO_MODE_OUTPUT, GPIO_TYPE_PUSH_PULL, GPIO_SPEED_LOW, GPIO_PULL_NONE);
 #endif
 }
 
@@ -98,7 +98,7 @@ void POWER_enable(POWER_requester_id_t requester_id, POWER_domain_t domain, LPTI
 #if (((defined DIM) && (defined HW1_0)) || (defined RS485_BRIDGE))
     case POWER_DOMAIN_RS485:
         // Turn RS power supply on.
-        GPIO_write(&GPIO_RS_POWER_ENABLE, 1);
+        GPIO_write(&GPIO_RS485_BUS_POWER_ENABLE, 1);
         delay_ms = POWER_ON_DELAY_MS_RS485;
         break;
 #endif
@@ -155,7 +155,7 @@ void POWER_disable(POWER_requester_id_t requester_id, POWER_domain_t domain) {
 #if (((defined DIM) && (defined HW1_0)) || (defined RS485_BRIDGE))
     case POWER_DOMAIN_RS485:
         // Turn RS power supply off.
-        GPIO_write(&GPIO_RS_POWER_ENABLE, 0);
+        GPIO_write(&GPIO_RS485_BUS_POWER_ENABLE, 0);
         break;
 #endif
     default:

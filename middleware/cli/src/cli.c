@@ -89,7 +89,7 @@ static const AT_command_t CLI_COMMANDS_LIST[] = {
     {
         .syntax = "$VRS=",
         .parameters = "state[dec]",
-        .description = "VRS power control",
+        .description = "RS485 bus power control",
         .callback = &_CLI_vrs_callback
     },
 #endif
@@ -214,29 +214,29 @@ static AT_status_t _CLI_adc_callback(void) {
     // Turn analog front-end on.
     POWER_enable(POWER_REQUESTER_ID_CLI, POWER_DOMAIN_ANALOG, LPTIM_DELAY_MODE_ACTIVE);
     // MCU voltage.
-    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_VMCU_MV, &generic_s32);
+    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_MCU_VOLTAGE_MV, &generic_s32);
     _CLI_check_driver_status(analog_status, ANALOG_SUCCESS, ERROR_BASE_ANALOG);
-    AT_reply_add_string("Vmcu=");
+    AT_reply_add_string("mcu_voltage=");
     AT_reply_add_integer(generic_s32, STRING_FORMAT_DECIMAL, 0);
     AT_reply_add_string("mV");
     AT_send_reply();
     // MCU temperature.
-    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_TMCU_DEGREES, &generic_s32);
+    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_MCU_TEMPERATURE_DEGREES, &generic_s32);
     _CLI_check_driver_status(analog_status, ANALOG_SUCCESS, ERROR_BASE_ANALOG);
-    AT_reply_add_string("Tmcu=");
+    AT_reply_add_string("mcu_temperature=");
     AT_reply_add_integer(generic_s32, STRING_FORMAT_DECIMAL, 0);
     AT_reply_add_string("dC");
     AT_send_reply();
     // Source voltage.
-    AT_reply_add_string("Vrs=");
-    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_VRS_MV, &generic_s32);
+    AT_reply_add_string("rs485_bus_voltage=");
+    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_RS485_BUS_VOLTAGE_MV, &generic_s32);
     _CLI_check_driver_status(analog_status, ANALOG_SUCCESS, ERROR_BASE_ANALOG);
     AT_reply_add_integer(generic_s32, STRING_FORMAT_DECIMAL, 0);
     AT_reply_add_string("mV");
     AT_send_reply();
     // Supercap voltage.
-    AT_reply_add_string("Vusb=");
-    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_VUSB_MV, &generic_s32);
+    AT_reply_add_string("usb_voltage=");
+    analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_USB_VOLTAGE_MV, &generic_s32);
     _CLI_check_driver_status(analog_status, ANALOG_SUCCESS, ERROR_BASE_ANALOG);
     AT_reply_add_integer(generic_s32, STRING_FORMAT_DECIMAL, 0);
     AT_reply_add_string("mV");
