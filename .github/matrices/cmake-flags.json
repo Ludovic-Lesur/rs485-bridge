@@ -21,17 +21,17 @@
                 {
                     "name": "low-baud-rate",
                     "sw_flags": {
-                        "RS485_BRIDGE_MODE_LOW_BAUD_RATE" : "ON",
-                        "RS485_BRIDGE_ENABLE_UNA_AT" : "ON",
-                        "RS485_BRIDGE_ENABLE_UNA_R4S8CR" : "ON"
+                        "RS485_BRIDGE_MODE_LOW_BAUD_RATE": "ON",
+                        "RS485_BRIDGE_ENABLE_UNA_AT": "ON",
+                        "RS485_BRIDGE_ENABLE_UNA_R4S8CR": "ON"
                     }
                 },
                 {
                     "name": "high-baud-rate",
                     "sw_flags": {
-                        "RS485_BRIDGE_MODE_LOW_BAUD_RATE" : "OFF",
-                        "RS485_BRIDGE_ENABLE_UNA_AT" : "ON",
-                        "RS485_BRIDGE_ENABLE_UNA_R4S8CR" : "ON"
+                        "RS485_BRIDGE_MODE_LOW_BAUD_RATE": "OFF",
+                        "RS485_BRIDGE_ENABLE_UNA_AT": "ON",
+                        "RS485_BRIDGE_ENABLE_UNA_R4S8CR": "ON"
                     }
                 }
             ]
