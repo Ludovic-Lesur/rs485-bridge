@@ -50,7 +50,7 @@ if(RS485_BRIDGE_BOARD STREQUAL "DIM")
 elseif(RS485_BRIDGE_BOARD STREQUAL "RS485_BRIDGE")
     # RS485-BRIDGE HW1.0.
     if(RS485_BRIDGE_HW_VERSION STREQUAL "HW1_0")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=cortex-m4 -O0")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 -O0")
         set(RS485_BRIDGE_MCU "stm32g4xx")
         set(PROJECT_LINKER_SCRIPT "stm32g441xbxx.ld")
     # Unknown version.
