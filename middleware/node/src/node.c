@@ -472,7 +472,7 @@ static NODE_status_t _NODE_stop_decoding(void) {
 NODE_status_t NODE_init(NODE_print_frame_cb_t print_frame_callback, NODE_none_protocol_rx_irq_cb_t none_protocol_rx_irq_callback) {
     // Local variables.
     NODE_status_t status = NODE_SUCCESS;
-#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
+#if ((defined RS485_BRIDGE) || (defined RS485_BRIDGE_ENABLE_UNA_R4S8CR))
     TIM_status_t tim_status = TIM_SUCCESS;
 #endif
     // Reset node list and RX buffer.
@@ -516,7 +516,7 @@ NODE_status_t NODE_de_init(void) {
     // Local variables.
     NODE_status_t status = NODE_SUCCESS;
     NODE_status_t node_status = NODE_SUCCESS;
-#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
+#if ((defined RS485_BRIDGE) || (defined RS485_BRIDGE_ENABLE_UNA_R4S8CR))
     TIM_status_t tim_status = TIM_SUCCESS;
 #endif
     // Stop reception.

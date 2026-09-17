@@ -199,7 +199,7 @@ static AT_status_t _CLI_rcc_callback(void) {
         AT_reply_add_string((clock_status == 0) ? ":OFF:" : ":ON:");
         AT_reply_add_integer((int32_t) clock_frequency, STRING_FORMAT_DECIMAL, 0);
         AT_reply_add_string("Hz");
-        AT_send_reply();
+        AT_reply_send();
     }
 errors:
     return status;
@@ -219,28 +219,28 @@ static AT_status_t _CLI_adc_callback(void) {
     AT_reply_add_string("mcu_voltage=");
     AT_reply_add_integer(generic_s32, STRING_FORMAT_DECIMAL, 0);
     AT_reply_add_string("mV");
-    AT_send_reply();
+    AT_reply_send();
     // MCU temperature.
     analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_MCU_TEMPERATURE_DEGREES, &generic_s32);
     _CLI_check_driver_status(analog_status, ANALOG_SUCCESS, ERROR_BASE_ANALOG);
     AT_reply_add_string("mcu_temperature=");
     AT_reply_add_integer(generic_s32, STRING_FORMAT_DECIMAL, 0);
     AT_reply_add_string("dC");
-    AT_send_reply();
+    AT_reply_send();
     // Source voltage.
     AT_reply_add_string("rs485_bus_voltage=");
     analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_RS485_BUS_VOLTAGE_MV, &generic_s32);
     _CLI_check_driver_status(analog_status, ANALOG_SUCCESS, ERROR_BASE_ANALOG);
     AT_reply_add_integer(generic_s32, STRING_FORMAT_DECIMAL, 0);
     AT_reply_add_string("mV");
-    AT_send_reply();
+    AT_reply_send();
     // Supercap voltage.
     AT_reply_add_string("usb_voltage=");
     analog_status = ANALOG_convert_channel(ANALOG_CHANNEL_USB_VOLTAGE_MV, &generic_s32);
     _CLI_check_driver_status(analog_status, ANALOG_SUCCESS, ERROR_BASE_ANALOG);
     AT_reply_add_integer(generic_s32, STRING_FORMAT_DECIMAL, 0);
     AT_reply_add_string("mV");
-    AT_send_reply();
+    AT_reply_send();
 errors:
     POWER_disable(POWER_REQUESTER_ID_CLI, POWER_DOMAIN_ANALOG);
     return status;
@@ -281,14 +281,14 @@ static AT_status_t _CLI_node_scan_callback(void) {
     }
     // Init screen.
     AT_reply_add_string("Nodes scan running...");
-    AT_send_reply();
+    AT_reply_send();
     // Perform bus scan.
     node_status = NODE_scan();
     _CLI_check_driver_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
     // Print list.
     AT_reply_add_integer((int32_t) NODES_LIST.count, STRING_FORMAT_DECIMAL, 0);
     AT_reply_add_string(" node(s) found");
-    AT_send_reply();
+    AT_reply_send();
     for (idx = 0; idx < NODES_LIST.count; idx++) {
         // Print address.
         AT_reply_add_integer(NODES_LIST.list[idx].address, STRING_FORMAT_HEXADECIMAL, 0);
@@ -305,7 +305,7 @@ static AT_status_t _CLI_node_scan_callback(void) {
                 AT_reply_add_string((char_t*) UNA_BOARD_NAME[NODES_LIST.list[idx].board_id]);
             }
         }
-        AT_send_reply();
+        AT_reply_send();
     }
 errors:
     return status;
@@ -331,7 +331,7 @@ static AT_status_t _CLI_node_get_protocol_callback(void) {
     AT_reply_add_integer((int32_t) baud_rate, STRING_FORMAT_DECIMAL, 0);
     AT_reply_add_string("bauds");
     // Send reply.
-    AT_send_reply();
+    AT_reply_send();
 errors:
     return status;
 }
@@ -401,7 +401,7 @@ static AT_status_t _CLI_node_write_callback(void) {
     _CLI_check_driver_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
     // Print write status.
     AT_reply_add_integer((int32_t) (write_status.all), STRING_FORMAT_HEXADECIMAL, 0);
-    AT_send_reply();
+    AT_reply_send();
 errors:
     return status;
 }
@@ -442,7 +442,7 @@ static AT_status_t _CLI_node_read_callback(void) {
             AT_reply_add_integer((int32_t) ((reg_value >> ((UNA_REGISTER_SIZE_BYTES - 1 - idx) << 3)) & 0xFF), STRING_FORMAT_HEXADECIMAL, 0);
         }
     }
-    AT_send_reply();
+    AT_reply_send();
 errors:
     return status;
 }
@@ -475,7 +475,7 @@ static AT_status_t _CLI_node_command_callback(void) {
     AT_reply_add_integer(command_params.node_addr, STRING_FORMAT_HEXADECIMAL, 0);
     AT_reply_add_string(" : ");
     AT_reply_add_string(command_params.command);
-    AT_send_reply();
+    AT_reply_send();
     // Perform read operation.
     node_status = NODE_send_command(&command_params);
     _CLI_check_driver_status(node_status, NODE_SUCCESS, ERROR_BASE_NODE);
@@ -486,7 +486,7 @@ errors:
 /*******************************************************************/
 static void _CLI_node_print_frame_callback(char_t* frame) {
     AT_reply_add_string(frame);
-    AT_send_reply();
+    AT_reply_send();
 }
 
 /*******************************************************************/
