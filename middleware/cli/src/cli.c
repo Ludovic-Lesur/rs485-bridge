@@ -132,9 +132,13 @@ static const AT_command_t CLI_COMMANDS_LIST[] = {
 };
 
 static const char_t* const CLI_NODE_PROTOCOL_NAME[NODE_PROTOCOL_LAST] = {
-    "None",
+    "NONE",
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     "UNA_AT",
-    "UNA_RS48CR"
+#endif
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
+    "UNA_RS48CR",
+#endif
 };
 
 static CLI_context_t cli_ctx = {
@@ -489,14 +493,6 @@ static void _CLI_node_print_frame_callback(char_t* frame) {
     AT_reply_send();
 }
 
-/*******************************************************************/
-static void _CLI_node_none_protocol_rx_irq_callback(uint8_t data) {
-    // Local variables.
-    uint8_t raw_byte = data;
-    // Call terminal directly.
-    TERMINAL_HW_write(TERMINAL_INSTANCE_CLI, &raw_byte, 1);
-}
-
 /*** AT functions ***/
 
 /*******************************************************************/
@@ -521,7 +517,7 @@ CLI_status_t CLI_init(void) {
         AT_exit_error(CLI_ERROR_BASE_AT);
     }
     // Init node layer.
-    node_status = NODE_init(&_CLI_node_print_frame_callback, &_CLI_node_none_protocol_rx_irq_callback);
+    node_status = NODE_init(&_CLI_node_print_frame_callback);
     NODE_exit_error(CLI_ERROR_BASE_NODE);
 errors:
     return status;

@@ -32,8 +32,7 @@ typedef enum {
     NODE_ERROR_PROTOCOL,
     // Low level drivers errors.
     NODE_ERROR_BASE_LPUART = ERROR_BASE_STEP,
-    NODE_ERROR_BASE_TIM_AUTO_BAUD_RATE_REQUEST = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
-    NODE_ERROR_BASE_TIM_UNA_R4S8CR = (NODE_ERROR_BASE_TIM_AUTO_BAUD_RATE_REQUEST + TIM_ERROR_BASE_LAST),
+    NODE_ERROR_BASE_TIM_UNA_R4S8CR = (NODE_ERROR_BASE_LPUART + LPUART_ERROR_BASE_LAST),
     NODE_ERROR_BASE_USART = (NODE_ERROR_BASE_TIM_UNA_R4S8CR + TIM_ERROR_BASE_LAST),
     NODE_ERROR_BASE_STRING = (NODE_ERROR_BASE_USART + USART_ERROR_BASE_LAST),
     NODE_ERROR_BASE_UNA_AT = (NODE_ERROR_BASE_STRING + STRING_ERROR_BASE_LAST),
@@ -48,8 +47,12 @@ typedef enum {
  *******************************************************************/
 typedef enum {
     NODE_PROTOCOL_NONE = 0,
+#ifdef RS485_BRIDGE_ENABLE_UNA_AT
     NODE_PROTOCOL_UNA_AT,
+#endif
+#ifdef RS485_BRIDGE_ENABLE_UNA_R4S8CR
     NODE_PROTOCOL_UNA_R4S8CR,
+#endif
     NODE_PROTOCOL_LAST
 } NODE_protocol_t;
 
@@ -59,12 +62,6 @@ typedef enum {
  *******************************************************************/
 typedef void (*NODE_print_frame_cb_t)(char_t* frame);
 
-/*!******************************************************************
- * \fn NODE_none_protocol_rx_irq_cb_t
- * \brief NODE RX interrupt callback for none protocol mode.
- *******************************************************************/
-typedef void (*NODE_none_protocol_rx_irq_cb_t)(uint8_t data);
-
 /*** NODES global variables ***/
 
 extern UNA_node_list_t NODES_LIST;
@@ -72,14 +69,13 @@ extern UNA_node_list_t NODES_LIST;
 /*** NODE functions ***/
 
 /*!******************************************************************
- * \fn NODE_status_t NODE_init(NODE_print_frame_cb_t print_frame_callback, NODE_none_protocol_rx_irq_cb_t none_protocol_rx_irq_callback)
+ * \fn NODE_status_t NODE_init(NODE_print_frame_cb_t print_frame_callback)
  * \brief Init unified node interface.
  * \param[in]   print_frame_callback: Function to call to print a decoded frame.
- * \param[in]   none_protocol_rx_irq_callback: Function to call to print a raw byte in none protocol decoding mode.
  * \param[out]  none
  * \retval      Function execution status.
  *******************************************************************/
-NODE_status_t NODE_init(NODE_print_frame_cb_t print_frame_callback, NODE_none_protocol_rx_irq_cb_t none_protocol_rx_irq_callback);
+NODE_status_t NODE_init(NODE_print_frame_cb_t print_frame_callback);
 
 /*!******************************************************************
  * \fn NODE_status_t NODE_de_init(void)
